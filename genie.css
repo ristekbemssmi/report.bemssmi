@@ -1,0 +1,27 @@
+/* genie.css
+   Gaya minimal untuk jendela yang dianimasikan oleh genie.js.
+   Atur posisi, ukuran, dan tampilan jendela sendiri di CSS kamu. */
+
+.genie-window {
+  display: none;            /* tertutup secara default */
+  will-change: transform, clip-path, opacity;
+  transform-origin: center; /* animasi dihitung dari titik tengah jendela */
+}
+
+.genie-window.is-open {
+  display: block;           /* ganti ke flex/grid kalau perlu, mis. display: flex */
+}
+
+/* Fokus ditempatkan ke jendela saat dibuka; outline tidak perlu terlihat */
+.genie-window:focus {
+  outline: none;
+}
+
+/* Jika pengunjung mengaktifkan "reduce motion", genie.js melewati animasi.
+   Aturan ini hanya jaga-jaga untuk transisi lain di jendela. */
+@media (prefers-reduced-motion: reduce) {
+  .genie-window {
+    transition: none !important;
+    animation: none !important;
+  }
+}
