@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="icon" type="image/png" href="logo/logo.png" />
-  <link rel="stylesheet" href="style.css?v=4.0" />
+  <link rel="stylesheet" href="style.css?v=4.1" />
   
   <link rel="stylesheet" href="vendor/katex/katex.min.css" />
   <script src="vendor/katex/katex.min.js"></script>
@@ -584,7 +584,7 @@
 
           <div class="gemini-prompt-footer mobile-aic-footer">
 
-            <input type="file" id="aiImageFileInput" accept="image/*" multiple style="display: none;" onchange="handleAiImageSelected(event)" />
+            <input type="file" id="aiImageFileInput" multiple style="display: none;" onchange="handleAiFilesSelected(event)" accept="image/*,.txt,.csv,.json,.md,.pdf,.js,.py,.html,.css,.doc,.docx" />
 
             <div class="gemini-attachment-preview" id="aiImagePreviewContainer" style="display: none;">
 
@@ -607,6 +607,7 @@
             </div>
 
             <div class="aic-composer-card aic-composer-card-mobile" id="mobileAiComposerCard">
+              <div id="mobileAiAttachedChips" class="aic-attached-chips-wrap" style="display: none; padding: 6px 10px 0; gap: 6px;"></div>
 
               <textarea 
 
@@ -2008,7 +2009,7 @@
 
           <div class="gemini-input-dock aic-composer-dock" id="desktopAiComposerDock">
 
-            <input type="file" id="desktopAiImageFileInput" multiple style="display:none;" onchange="handleDesktopAiComposerFiles(event)">
+            <input type="file" id="desktopAiImageFileInput" multiple style="display:none;" onchange="handleDesktopAiComposerFiles(event)" accept="image/*,.txt,.csv,.json,.md,.pdf,.js,.py,.html,.css,.doc,.docx">
 
             <div id="desktopAiAttachedChips" class="aic-attached-chips-wrap" style="display: none;"></div>
 
@@ -2612,7 +2613,7 @@
   </div>
 
 <script src="genie.js"></script>
-  <script src="app.js?v=4.0"></script>
+  <script src="app.js?v=4.1"></script>
 
 </body>
 

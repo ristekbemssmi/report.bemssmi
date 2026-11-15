@@ -555,18 +555,27 @@ const formatReply = (raw, userPrompt = '') => {
   return detectAndAttachDivisionButtons(html, raw, userPrompt);
 };
 
-async function callKenariChat(model, prompt, image, apiKey, externalSignal) {
+async function callKenariChat(model, prompt, images, apiKey, externalSignal) {
   const url = `${KENARI_BASE_URL}/chat/completions`;
+  const imageList = Array.isArray(images) ? images : (images && (images.data || images.dataUrl) ? [images] : []);
 
   let userContent;
-  if (image && image.data) {
-    const dataUrl = image.data.startsWith('data:')
-      ? image.data
-      : `data:${image.mimeType || 'image/png'};base64,${image.data}`;
+  if (imageList.length > 0) {
     userContent = [
-      { type: 'text', text: prompt || 'Jelaskan gambar ini dalam konteks kegiatan BEM Langkah Berdikari.' },
-      { type: 'image_url', image_url: { url: dataUrl } }
+      { type: 'text', text: prompt || 'Jelaskan dan analisis gambar terlampir secara detail dalam konteks kegiatan atau informasi yang terlihat.' }
     ];
+    for (const img of imageList) {
+      if (img && (img.data || img.dataUrl)) {
+        const rawData = img.data || img.dataUrl;
+        const dataUrl = rawData.startsWith('data:')
+          ? rawData
+          : `data:${img.mimeType || img.type || 'image/jpeg'};base64,${rawData}`;
+        userContent.push({
+          type: 'image_url',
+          image_url: { url: dataUrl }
+        });
+      }
+    }
   } else {
     userContent = prompt || 'Halo, jelaskan peranmu sebagai Langkari AI.';
   }
@@ -653,11 +662,12 @@ const server = http.createServer(async (req, res) => {
         const body = JSON.parse(bodyData || '{}');
         const prompt = (body.prompt || '').trim();
         const image = body.image || null;
+        const images = Array.isArray(body.images) ? body.images : (image && (image.data || image.dataUrl) ? [image] : []);
         let requestedModel = body.model || process.env.DEFAULT_AI_MODEL || 'glm-4-7-flash:free';
 
-        if (!prompt && !image) {
+        if (!prompt && images.length === 0) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Prompt atau gambar wajib disertakan.' }));
+          res.end(JSON.stringify({ error: 'Prompt atau file gambar wajib disertakan.' }));
           return;
         }
 
@@ -673,11 +683,13 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const apiKey = (process.env.KENARI_API_KEY && !process.env.KENARI_API_KEY.includes('your-kenari-api-key'))
-          ? process.env.KENARI_API_KEY
-          : DEFAULT_KENARI_KEY;
+        const apiKey = (process.env.LANGKARI_AI_KEY && !process.env.LANGKARI_AI_KEY.includes('your-'))
+          ? process.env.LANGKARI_AI_KEY
+          : ((process.env.KENARI_API_KEY && !process.env.KENARI_API_KEY.includes('your-kenari-api-key'))
+              ? process.env.KENARI_API_KEY
+              : DEFAULT_KENARI_KEY);
         if (!apiKey) {
-          const errMsg = 'API Key Kenari.id belum disetel di server.<br><br>Silakan masukkan kunci API Anda di file <code>.env</code> atau Hostinger Environment Variables:<br><code>KENARI_API_KEY=kn-xxxxxxxx</code>';
+          const errMsg = 'Layanan AI Gateway belum terhubung dengan benar di server.<br><br>Silakan hubungi administrator sistem atau periksa konfigurasi server.';
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
             reply: errMsg,
@@ -689,8 +701,11 @@ const server = http.createServer(async (req, res) => {
         }
 
         let candidateModels;
-        if (image && image.data) {
-          candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+        if (images.length > 0) {
+          const visionModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+          candidateModels = visionModels.includes(requestedModel)
+            ? [requestedModel, ...visionModels.filter(m => m !== requestedModel)]
+            : visionModels;
         } else {
           // Model Race: Panggil model gesit (laguna-xs & qwen3-8) bersama requested model
           const baseModels = ['laguna-xs-2-1:free', 'qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
@@ -712,7 +727,7 @@ const server = http.createServer(async (req, res) => {
 
         async function fetchModel(m) {
           try {
-            const apiRes = await callKenariChat(m, prompt, image, apiKey, raceController.signal);
+            const apiRes = await callKenariChat(m, prompt, images, apiKey, raceController.signal);
             if (!apiRes.ok) {
               const errBody = await apiRes.text().catch(() => '');
               throw new Error(`HTTP ${apiRes.status}: ${errBody}`);
@@ -753,8 +768,8 @@ const server = http.createServer(async (req, res) => {
           }));
         } else {
           const errMsg = lastStatus === 429
-            ? 'Kuota model gratis Kenari.id sedang padat/penuh saat ini. Mohon tunggu 1 menit lalu coba lagi 🙏'
-            : `Gagal menghubungi server Kenari.id (${lastStatus}). Mohon pastikan KENARI_API_KEY Anda aktif dan valid.`;
+            ? 'Layanan Langkari AI sedang menerima lalu lintas yang cukup padat saat ini. Mohon tunggu 1 menit lalu coba lagi ya 🙏'
+            : 'Server Langkari AI sedang mengalami kendala pemrosesan sesaat. Silakan coba kembali dalam beberapa detik 🙏';
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
             reply: errMsg,

@@ -1585,69 +1585,384 @@ window.openGlobalChatWithDiv = function(divKey) {
 
 };
 
+
+// ==========================================================================
+// UNIFIED AI COMPOSER ATTACHED FILES ENGINE (MULTIMODAL VISION & DOCUMENTS)
+// ==========================================================================
+let composerAttachedFiles = [];
+let composerAttachedFilesList = [];
 let pendingAiImage = null;
+let pendingDesktopAiImage = null;
+
+// Dynamic PDF text extractor using pdf.js
+async function extractPdfText(file) {
+  try {
+    if (!window.pdfjsLib) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = () => {
+          if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          }
+          resolve();
+        };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    const maxPages = Math.min(pdf.numPages, 10);
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += '[Halaman ' + i + ']\\n' + pageText + '\\n\\n';
+    }
+    return fullText.trim();
+  } catch (err) {
+    console.warn('PDF extraction notice:', err);
+    return null;
+  }
+}
+
+// Smart image processing with downscaling for fast network transmission & vision inference
+function processImageFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 1600;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const mime = (file.type === 'image/png') ? 'image/png' : 'image/jpeg';
+          const dataUrl = canvas.toDataURL(mime, 0.85);
+          resolve({
+            id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            name: file.name,
+            type: mime,
+            size: dataUrl.length,
+            isImage: true,
+            dataUrl: dataUrl
+          });
+        } else {
+          resolve({
+            id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            name: file.name,
+            type: file.type || 'image/jpeg',
+            size: file.size,
+            isImage: true,
+            dataUrl: e.target.result
+          });
+        }
+      };
+      img.onerror = function() {
+        resolve({
+          id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+          name: file.name,
+          type: file.type || 'image/jpeg',
+          size: file.size,
+          isImage: true,
+          dataUrl: e.target.result
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Text & document processor (.txt, .csv, .json, .md, .pdf, code, etc.)
+function processTextFile(file) {
+  return new Promise((resolve) => {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      extractPdfText(file).then(text => {
+        if (text) {
+          resolve({
+            id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            name: file.name,
+            type: 'application/pdf',
+            size: file.size,
+            isImage: false,
+            textContent: text.slice(0, 30000)
+          });
+        } else {
+          resolve({
+            id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            name: file.name,
+            type: 'application/pdf',
+            size: file.size,
+            isImage: false,
+            textContent: '[Dokumen PDF: ' + file.name + ' - Ukuran ' + (file.size / 1024).toFixed(1) + ' KB. Teks tidak dapat diekstrak otomatis.]'
+          });
+        }
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const content = e.target.result || '';
+      const safeContent = content.length > 30000
+        ? content.slice(0, 30000) + '\\n\\n...[konten dipotong karena batas panjang file]...'
+        : content;
+      resolve({
+        id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        name: file.name,
+        type: file.type || 'text/plain',
+        size: file.size,
+        isImage: false,
+        textContent: safeContent
+      });
+    };
+    reader.onerror = function() {
+      resolve({
+        id: 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        name: file.name,
+        type: file.type || 'text/plain',
+        size: file.size,
+        isImage: false,
+        textContent: '[File ' + file.name + ' tidak dapat dibaca]'
+      });
+    };
+    reader.readAsText(file);
+  });
+}
+
+// Add files to composer
+async function addComposerFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (files.length === 0) return;
+
+  for (const file of files) {
+    if (file.type && file.type.startsWith('image/')) {
+      const item = await processImageFile(file);
+      composerAttachedFiles.push(item);
+    } else {
+      const item = await processTextFile(file);
+      composerAttachedFiles.push(item);
+    }
+  }
+
+  syncBackwardsAttachmentState();
+  renderComposerAttachedChips();
+  updateComposerSubmitButtonState();
+}
+
+function syncBackwardsAttachmentState() {
+  composerAttachedFilesList = composerAttachedFiles.map(f => f.name);
+  const firstImg = composerAttachedFiles.find(f => f.isImage);
+  if (firstImg) {
+    pendingAiImage = { dataUrl: firstImg.dataUrl, name: firstImg.name, type: firstImg.type };
+    pendingDesktopAiImage = pendingAiImage;
+    window.pendingDesktopAiImage = pendingAiImage;
+  } else {
+    pendingAiImage = null;
+    pendingDesktopAiImage = null;
+    window.pendingDesktopAiImage = null;
+  }
+}
+
+// Render chips on both Desktop & Mobile
+function renderComposerAttachedChips() {
+  const desktopTray = document.getElementById('desktopAiAttachedChips');
+  const mobileTray = document.getElementById('mobileAiAttachedChips');
+  const mobileLegacyPreview = document.getElementById('aiImagePreviewContainer');
+
+  const html = composerAttachedFiles.map((file, idx) => {
+    if (file.isImage) {
+      return '<div class="aic-attached-chip">' +
+        '<img src="' + file.dataUrl + '" alt="" />' +
+        '<span class="aic-chip-text" title="' + escapeHtmlSafe(file.name) + '">' + escapeHtmlSafe(file.name) + '</span>' +
+        '<button type="button" class="aic-chip-close" onclick="removeComposerFile(' + idx + ')" title="Hapus file">✕</button>' +
+        '</div>';
+    } else {
+      return '<div class="aic-attached-chip">' +
+        '<span>📄</span>' +
+        '<span class="aic-chip-text" title="' + escapeHtmlSafe(file.name) + '">' + escapeHtmlSafe(file.name) + '</span>' +
+        '<button type="button" class="aic-chip-close" onclick="removeComposerFile(' + idx + ')" title="Hapus file">✕</button>' +
+        '</div>';
+    }
+  }).join('');
+
+  if (desktopTray) {
+    if (composerAttachedFiles.length === 0) {
+      desktopTray.style.display = 'none';
+      desktopTray.innerHTML = '';
+    } else {
+      desktopTray.style.display = 'flex';
+      desktopTray.innerHTML = html;
+    }
+  }
+
+  if (mobileTray) {
+    if (composerAttachedFiles.length === 0) {
+      mobileTray.style.display = 'none';
+      mobileTray.innerHTML = '';
+    } else {
+      mobileTray.style.display = 'flex';
+      mobileTray.innerHTML = html;
+    }
+  }
+
+  if (mobileLegacyPreview) {
+    const firstImg = composerAttachedFiles.find(f => f.isImage);
+    if (firstImg) {
+      const thumb = document.getElementById('aiImagePreviewThumb');
+      const nameEl = document.getElementById('aiImagePreviewName');
+      if (thumb) thumb.src = firstImg.dataUrl;
+      if (nameEl) nameEl.textContent = firstImg.name;
+      mobileLegacyPreview.style.display = 'flex';
+    } else {
+      mobileLegacyPreview.style.display = 'none';
+    }
+  }
+}
+
+window.removeComposerFile = function(idx) {
+  composerAttachedFiles.splice(idx, 1);
+  syncBackwardsAttachmentState();
+  renderComposerAttachedChips();
+  updateComposerSubmitButtonState();
+};
+
+window.clearComposerFiles = function() {
+  composerAttachedFiles = [];
+  syncBackwardsAttachmentState();
+  renderComposerAttachedChips();
+  updateComposerSubmitButtonState();
+
+  const mInput = document.getElementById('aiImageFileInput');
+  if (mInput) mInput.value = '';
+  const dInput = document.getElementById('desktopAiImageFileInput');
+  if (dInput) dInput.value = '';
+  const container = document.getElementById('aiImagePreviewContainer');
+  if (container) container.style.display = 'none';
+};
 
 window.triggerAiImageUpload = function() {
-
   const fileInput = document.getElementById('aiImageFileInput');
-
   if (fileInput) fileInput.click();
-
 };
 
-window.handleAiImageSelected = function(e) {
-
-  const file = e.target.files && e.target.files[0];
-
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = function(evt) {
-
-    pendingAiImage = {
-
-      dataUrl: evt.target.result,
-
-      name: file.name
-
-    };
-
-    const container = document.getElementById('aiImagePreviewContainer');
-
-    const thumb = document.getElementById('aiImagePreviewThumb');
-
-    const nameEl = document.getElementById('aiImagePreviewName');
-
-    if (thumb) thumb.src = pendingAiImage.dataUrl;
-
-    if (nameEl) nameEl.textContent = file.name;
-
-    if (container) container.style.display = 'flex';
-
-    const input = document.getElementById('aiScreenPromptInput');
-
-    if (input) input.focus();
-
-  };
-
-  reader.readAsDataURL(file);
-
+window.triggerDesktopAiImageUpload = function() {
+  const fileInput = document.getElementById('desktopAiImageFileInput');
+  if (fileInput) fileInput.click();
 };
 
-window.removeAiImage = function() {
-
-  pendingAiImage = null;
-
-  const fileInput = document.getElementById('aiImageFileInput');
-
-  if (fileInput) fileInput.value = '';
-
-  const container = document.getElementById('aiImagePreviewContainer');
-
-  if (container) container.style.display = 'none';
-
+window.handleDesktopAiComposerFiles = function(event) {
+  if (event && event.target && event.target.files) {
+    addComposerFiles(event.target.files);
+    event.target.value = '';
+  }
 };
+
+window.handleAiFilesSelected = function(event) {
+  if (event && event.target && event.target.files) {
+    addComposerFiles(event.target.files);
+    event.target.value = '';
+  }
+};
+
+window.handleAiImageSelected = window.handleAiFilesSelected;
+window.handleDesktopAiImageSelect = window.handleDesktopAiComposerFiles;
+window.removeAiImage = window.clearComposerFiles;
+window.removeDesktopAiImage = window.clearComposerFiles;
+
+function updateComposerSubmitButtonState() {
+  const dInput = document.getElementById('desktopAiPagePromptInput') || document.getElementById('desktopAiPromptInput');
+  const dBtn = document.getElementById('desktopAiSendBtn');
+  const mInput = document.getElementById('aiScreenPromptInput');
+  const mBtn = document.getElementById('btnSendAiPrompt');
+
+  const hasFiles = composerAttachedFiles.length > 0;
+
+  if (dBtn) {
+    const dHasText = dInput && dInput.value.trim().length > 0;
+    if (dHasText || hasFiles) {
+      dBtn.classList.add('ready');
+    } else {
+      dBtn.classList.remove('ready');
+    }
+  }
+
+  if (mBtn) {
+    const mHasText = mInput && mInput.value.trim().length > 0;
+    if (mHasText || hasFiles) {
+      mBtn.classList.add('ready');
+    } else {
+      mBtn.classList.remove('ready');
+    }
+  }
+}
+
+// Setup Drag & Drop and Clipboard Paste (Ctrl+V)
+function setupAiAttachmentDragAndDrop() {
+  const targets = [
+    document.getElementById('desktopAiComposerCard'),
+    document.getElementById('mobileAiComposerCard')
+  ];
+
+  targets.forEach(card => {
+    if (!card || card._dndReady) return;
+    card._dndReady = true;
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.classList.add('dragover');
+    });
+    card.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      card.classList.remove('dragover');
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files) {
+        addComposerFiles(e.dataTransfer.files);
+      }
+    });
+  });
+
+  const inputs = [
+    document.getElementById('desktopAiPagePromptInput'),
+    document.getElementById('aiScreenPromptInput')
+  ];
+
+  inputs.forEach(input => {
+    if (!input || input._pasteReady) return;
+    input._pasteReady = true;
+    input.addEventListener('paste', (e) => {
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        addComposerFiles(e.clipboardData.files);
+      }
+    });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupAiAttachmentDragAndDrop);
+} else {
+  setTimeout(setupAiAttachmentDragAndDrop, 300);
+}
+
 
 window.autoResizeGeminiInput = function(textarea) {
 
@@ -2090,126 +2405,96 @@ window.askAiScreenPrompt = function(promptText) {
 };
 
 window.sendAiScreenPrompt = function() {
-
   const input = document.getElementById('aiScreenPromptInput');
-
   const chatFlow = document.getElementById('aiScreenChatFlow');
-
   const messagesContainer = document.getElementById('aiStreamMessages');
-
   const hero = document.getElementById('aiGeminiHero');
-
   if (!input || !messagesContainer) return;
 
   const promptText = input.value.trim();
+  const attachedImages = composerAttachedFiles.filter(f => f.isImage);
+  const attachedDocs = composerAttachedFiles.filter(f => !f.isImage);
 
-  const attachedImage = pendingAiImage;
-
-  if (!promptText && !attachedImage) return;
+  if (!promptText && composerAttachedFiles.length === 0) return;
 
   if (hero) hero.style.display = 'none';
 
-  const userMsg = document.createElement('div');
-
-  userMsg.className = 'gemini-msg user';
-
-  let imageHTML = '';
-
-  if (attachedImage) {
-
-    imageHTML = `
-
-      <div class="user-attached-image-wrap">
-
-        <img src="${attachedImage.dataUrl}" alt="${escapeHTML(attachedImage.name)}" class="user-chat-img" onclick="window.open(this.src, '_blank')" title="Ketuk untuk melihat ukuran penuh" />
-
-      </div>
-
-    `;
-
+  let attachmentsHTML = '';
+  if (attachedImages.length > 0 || attachedDocs.length > 0) {
+    attachmentsHTML += '<div class="gemini-user-attachments">';
+    for (const img of attachedImages) {
+      attachmentsHTML += '<div class="gemini-user-thumb-wrap">' +
+        '<img src="' + img.dataUrl + '" alt="' + escapeHTML(img.name) + '" onclick="window.open(this.src, \'_blank\')" title="Ketuk untuk memperbesar" />' +
+        '</div>';
+    }
+    for (const doc of attachedDocs) {
+      attachmentsHTML += '<div class="gemini-user-doc-badge">' +
+        '<span>📄</span>' +
+        '<span>' + escapeHTML(doc.name) + '</span>' +
+        '</div>';
+    }
+    attachmentsHTML += '</div>';
   }
 
+  const userMsg = document.createElement('div');
+  userMsg.className = 'gemini-msg user';
   userMsg.innerHTML = `
-
     <div class="gemini-msg-avatar user-avatar">👤</div>
-
     <div class="gemini-msg-body">
-
-      ${imageHTML}
-
-      ${promptText ? `<div class="gemini-bubble user-bubble">${escapeHTML(promptText)}</div>` : ''}
-
+      ${attachmentsHTML}
+      ${promptText ? '<div class="gemini-bubble user-bubble">' + escapeHTML(promptText) + '</div>' : ''}
     </div>
-
   `;
-
   messagesContainer.appendChild(userMsg);
 
   input.value = '';
-
   input.style.height = 'auto';
-
   const sendBtn = document.getElementById('btnSendAiPrompt');
-
   if (sendBtn) sendBtn.classList.remove('ready');
 
-  removeAiImage();
+  // Prepare final prompt with document text if attached
+  let finalPrompt = promptText;
+  if (attachedDocs.length > 0) {
+    let docsContext = '';
+    for (const doc of attachedDocs) {
+      docsContext += '\n\n[Lampiran Dokumen: "' + doc.name + '"]\n```\n' + doc.textContent + '\n```\n';
+    }
+    if (finalPrompt) {
+      finalPrompt = finalPrompt + '\n\n---' + docsContext + '---';
+    } else {
+      finalPrompt = 'Berikut adalah dokumen yang saya lampirkan:' + docsContext + '\nMohon jelaskan dan rangkum isi dokumen di atas secara detail dan terstruktur.';
+    }
+  } else if (!finalPrompt && attachedImages.length > 0) {
+    finalPrompt = 'Jelaskan dan analisis gambar terlampir secara detail dalam konteks kegiatan atau informasi yang terlihat.';
+  }
+
+  // Clear composer attachments
+  clearComposerFiles();
 
   if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
 
-  const GEMINI_STAR_SVG = `
-
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-
-      <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z" fill="#FDE053" stroke="#EC8129"/>
-
-      <path d="M19 15L20.2 17.8L23 19L20.2 20.2L19 23L17.8 20.2L15 19L17.8 17.8L19 15Z" fill="#ffffff" stroke="#31487A" stroke-width="1.2"/>
-
-    </svg>
-
-  `;
-
-  // Display Minimal Searching Pill ("Menelusuri web")
-
+  // Display Searching Indicator
   const searchingMsg = document.createElement('div');
-
   searchingMsg.className = 'gemini-msg bot searching';
-
   searchingMsg.id = 'geminiSearchingIndicator';
-
   searchingMsg.innerHTML = `
-
     <div class="gemini-msg-avatar bot-avatar">
-
       ${getComposerProviderSvg((typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo().modelProvider : 'gemini'), 20)}
-
     </div>
-
     <div class="gemini-msg-body">
-
       <div class="gemini-bubble searching-bubble">
-
         ${getSearchingPillHTML()}
-
       </div>
-
     </div>
-
   `;
-
   messagesContainer.appendChild(searchingMsg);
-
   if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
 
-  
-
-
-  // Live Inference via /api/chat (Kenari.id Gateway) with Fallback
+  // Live Inference via /api/chat (Langkari AI Gateway) with Fallback
   const activeInfo = typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo() : { modelName: 'glm-4-7-flash:free', modelProvider: 'glm' };
   const requestedModel = activeInfo.modelName || 'glm-4-7-flash:free';
 
-  const promptVal = (typeof text !== 'undefined' ? text : promptText) || '';
-  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(promptVal, attachedImage) : null;
+  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(finalPrompt, attachedImages[0]) : null;
   if (fastGuardrail && fastGuardrail.includes('AKSES DIBATASI')) {
     if (searchingMsg) searchingMsg.remove();
     const botMsg = document.createElement('div');
@@ -2229,14 +2514,22 @@ window.sendAiScreenPrompt = function() {
     return;
   }
 
+  const primaryImg = attachedImages.length > 0 ? {
+    data: attachedImages[0].dataUrl,
+    mimeType: attachedImages[0].type || 'image/jpeg',
+    name: attachedImages[0].name
+  } : null;
+  const allImages = attachedImages.map(img => ({
+    data: img.dataUrl,
+    mimeType: img.type || 'image/jpeg',
+    name: img.name
+  }));
+
   sendChatApiRequest({
-    prompt: promptText,
+    prompt: finalPrompt,
     model: requestedModel,
-    image: attachedImage ? {
-      data: attachedImage.dataUrl,
-      mimeType: attachedImage.type || 'image/png',
-      name: attachedImage.name
-    } : null
+    image: primaryImg,
+    images: allImages
   })
   .then(data => {
     const indicator = document.getElementById('geminiSearchingIndicator');
@@ -2305,7 +2598,7 @@ window.sendAiScreenPrompt = function() {
       </div>
       <div class="gemini-msg-body">
         <div class="gemini-bubble bot-bubble">
-          ${generateAiResponse(promptText, !!attachedImage)}
+          ${generateAiResponse(finalPrompt, attachedImages.length > 0)}
         </div>
       </div>
     `;
@@ -2316,7 +2609,6 @@ window.sendAiScreenPrompt = function() {
     }
     if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
   });
-
 };
 
 window.resetAiChat = function() {
@@ -3305,7 +3597,7 @@ function initLiveClock() {
 
 
 
-let pendingDesktopAiImage = null;
+// pendingDesktopAiImage declared in Unified Attachment Engine
 
 window.toggleViewMode = function() {
 
@@ -3936,7 +4228,7 @@ document.addEventListener('keydown', (e) => {
 
 // ==========================================================================
 
-// LANGKARI AI - FULLSCREEN CHAT HANDLERS & KENARI.ID ENGINE
+// LANGKARI AI - FULLSCREEN CHAT HANDLERS & INFERENCE ENGINE
 
 // ==========================================================================
 
@@ -4053,11 +4345,18 @@ function getSmartGeminiResponseHTML(promptText, attachedImage) {
 
       <div style="background: rgba(37, 99, 235, 0.08); border-left: 3px solid #2563EB; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 13.5px;">
 
-        🔍 <strong>Analisis Lampiran:</strong> Terdeteksi gambar <em>${escapeHtmlSafe(attachedImage.name)}</em> (${attachedImage.type}). Visual siap digunakan untuk referensi materi publikasi.
+        🔍 <strong>Analisis Lampiran:</strong> Terdeteksi file <em>${escapeHtmlSafe(attachedImage.name)}</em>. Visual dan konten siap dibaca oleh AI.
 
       </div>
 
     `;
+
+    if (!q || q.includes('gambar') || q.includes('foto') || q.includes('image') || q.includes('analisis') || q.includes('jelaskan') || q.includes('dokumen') || q.includes('file')) {
+      return imageNote + `<h4>📄 Lampiran Berhasil Dibaca</h4>
+<p>Langkari AI telah menerima lampiran <strong>${escapeHtmlSafe(attachedImage.name)}</strong>.</p>
+<p>Konten siap diproses oleh model kecerdasan buatan. Pada mode online, model multimodal (<em>Qwen 3.8 Omni Flash / GLM 4.7 Flash</em>) membaca detail visual, teks OCR, dan isi dokumen secara otomatis.</p>
+<p>Silakan ajukan pertanyaan atau instruksi yang ingin Anda analisis dari lampiran ini!</p>`;
+    }
 
   }
 
@@ -4348,124 +4647,97 @@ function setDesktopAiTopicTitle(promptText) {
 window.setDesktopAiTopicTitle = setDesktopAiTopicTitle;
 
 window.sendDesktopAiPagePrompt = function() {
-
   const input = document.getElementById('desktopAiPagePromptInput') || document.getElementById('desktopAiPromptInput');
-
   const messagesContainer = document.getElementById('desktopAiPageStreamMessages') || document.getElementById('desktopAiStreamMessages');
-
   const chatFlow = document.getElementById('desktopAiPageMessagesFlow') || document.getElementById('desktopAiChatFlow');
-
   const welcome = document.getElementById('desktopAiPageWelcome') || document.getElementById('desktopAiWelcome');
-
   if (!input || !messagesContainer) return;
 
-  const text = input.value.trim();
+  const rawUserText = input.value.trim();
+  const attachedImages = composerAttachedFiles.filter(f => f.isImage);
+  const attachedDocs = composerAttachedFiles.filter(f => !f.isImage);
 
-  const attachedImage = window.pendingDesktopAiImage || null;
+  if (!rawUserText && composerAttachedFiles.length === 0) return;
 
-  if (!text && !attachedImage) return;
-
-  lastUserAiPrompt = text;
-  setDesktopAiTopicTitle(text);
-
-  // Hide welcome hero on first message
+  lastUserAiPrompt = rawUserText || (attachedImages.length > 0 ? 'Analisis gambar' : 'Analisis dokumen');
+  setDesktopAiTopicTitle(lastUserAiPrompt);
 
   if (welcome) welcome.style.display = 'none';
 
-  // Build User Bubble
-
-  const userMsg = document.createElement('div');
-
-  userMsg.className = 'gemini-msg user';
-
-  let imgHTML = '';
-
-  if (attachedImage) {
-
-    imgHTML = `
-
-      <div class="gemini-user-img-preview">
-
-        <img src="${attachedImage.dataUrl}" alt="${escapeHtmlSafe(attachedImage.name)}" />
-
-      </div>
-
-    `;
-
+  // Build User Bubble HTML
+  let attachmentsHTML = '';
+  if (attachedImages.length > 0 || attachedDocs.length > 0) {
+    attachmentsHTML += '<div class="gemini-user-attachments">';
+    for (const img of attachedImages) {
+      attachmentsHTML += '<div class="gemini-user-thumb-wrap">' +
+        '<img src="' + img.dataUrl + '" alt="' + escapeHtmlSafe(img.name) + '" onclick="window.open(this.src, \'_blank\')" title="Klik untuk memperbesar" />' +
+        '</div>';
+    }
+    for (const doc of attachedDocs) {
+      attachmentsHTML += '<div class="gemini-user-doc-badge">' +
+        '<span>📄</span>' +
+        '<span>' + escapeHtmlSafe(doc.name) + '</span>' +
+        '</div>';
+    }
+    attachmentsHTML += '</div>';
   }
 
+  const userMsg = document.createElement('div');
+  userMsg.className = 'gemini-msg user';
   userMsg.innerHTML = `
-
     <div class="gemini-user-bubble">
-
-      ${imgHTML}
-
-      <div>${escapeHtmlSafe(text)}</div>
-
+      ${attachmentsHTML}
+      ${rawUserText ? '<div>' + escapeHtmlSafe(rawUserText) + '</div>' : ''}
     </div>
-
   `;
-
   messagesContainer.appendChild(userMsg);
 
   // Clear input & image preview
-
   input.value = '';
-
   input.style.height = 'auto';
 
-  if (window.removeDesktopAiImage) {
-
-    window.removeDesktopAiImage();
-
+  // Prepare full prompt with document contents if any
+  let finalPrompt = rawUserText;
+  if (attachedDocs.length > 0) {
+    let docsContext = '';
+    for (const doc of attachedDocs) {
+      docsContext += '\n\n[Lampiran Dokumen: "' + doc.name + '"]\n```\n' + doc.textContent + '\n```\n';
+    }
+    if (finalPrompt) {
+      finalPrompt = finalPrompt + '\n\n---' + docsContext + '---';
+    } else {
+      finalPrompt = 'Berikut adalah dokumen yang saya lampirkan:' + docsContext + '\nMohon jelaskan dan rangkum isi dokumen di atas secara detail dan terstruktur.';
+    }
+  } else if (!finalPrompt && attachedImages.length > 0) {
+    finalPrompt = 'Jelaskan dan analisis gambar terlampir secara detail dalam konteks kegiatan atau informasi yang terlihat.';
   }
 
-  if (typeof composerAttachedFilesList !== 'undefined') {
-
-    composerAttachedFilesList = [];
-
-    if (typeof renderComposerAttachedChips === 'function') renderComposerAttachedChips();
-
-    if (typeof updateComposerSubmitButtonState === 'function') updateComposerSubmitButtonState();
-
-  }
+  clearComposerFiles();
 
   if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
 
   // Show Gemini Searching indicator
-
   const searchingMsg = document.createElement('div');
-
   searchingMsg.className = 'gemini-msg bot gemini-searching';
-
   searchingMsg.id = 'geminiSearchingIndicator';
-
   searchingMsg.innerHTML = `
-
     <div class="gemini-bot-avatar">
-
       ${getComposerProviderSvg((typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo().modelProvider : 'gemini'), 22)}
-
     </div>
-
     <div class="gemini-bot-content ai-thinking-content">
       <div class="shining-text-container">
         <span class="shining-text">${getThinkingModelName((typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo().modelName : 'AI Engine'))} is thinking...</span>
       </div>
     </div>
-
   `;
-
   messagesContainer.appendChild(searchingMsg);
-
   if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
 
-  // Live Inference via /api/chat (Kenari.id Gateway) with Fallback
+  // Live Inference via /api/chat (Langkari AI Gateway) with Fallback
   const activeInfo = typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo() : { modelName: 'glm-4-7-flash:free', modelProvider: 'glm' };
   const requestedModel = activeInfo.modelName || 'glm-4-7-flash:free';
 
-  const promptVal = (typeof text !== 'undefined' ? text : promptText) || '';
-  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(promptVal, attachedImage) : null;
+  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(finalPrompt, attachedImages[0]) : null;
   if (fastGuardrail && fastGuardrail.includes('AKSES DIBATASI')) {
     if (searchingMsg) searchingMsg.remove();
     const botMsg = document.createElement('div');
@@ -4485,14 +4757,22 @@ window.sendDesktopAiPagePrompt = function() {
     return;
   }
 
+  const primaryImg = attachedImages.length > 0 ? {
+    data: attachedImages[0].dataUrl,
+    mimeType: attachedImages[0].type || 'image/jpeg',
+    name: attachedImages[0].name
+  } : null;
+  const allImagesPayload = attachedImages.map(img => ({
+    data: img.dataUrl,
+    mimeType: img.type || 'image/jpeg',
+    name: img.name
+  }));
+
   sendChatApiRequest({
-    prompt: text,
+    prompt: finalPrompt,
     model: requestedModel,
-    image: attachedImage ? {
-      data: attachedImage.dataUrl,
-      mimeType: attachedImage.type || 'image/png',
-      name: attachedImage.name
-    } : null
+    image: primaryImg,
+    images: allImagesPayload
   })
   .then(data => {
     const indicator = document.getElementById('geminiSearchingIndicator');
@@ -4585,7 +4865,7 @@ window.sendDesktopAiPagePrompt = function() {
       </div>
       <div class="gemini-bot-content">
         <div class="gemini-response-text" style="width: 100%;">
-          ${getSmartGeminiResponseHTML(text, attachedImage)}
+          ${getSmartGeminiResponseHTML(finalPrompt, attachedImages[0])}
         </div>
       </div>
     `;
@@ -4595,199 +4875,6 @@ window.sendDesktopAiPagePrompt = function() {
     }
     if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
   });
-
-};
-
-window.copyAiResponse = function(btn) {
-
-  const botMsg = btn.closest('.gemini-msg');
-
-  if (!botMsg) return;
-
-  const textEl = botMsg.querySelector('.gemini-response-text') || botMsg.querySelector('.gemini-bubble.bot-bubble') || botMsg.querySelector('.ai-relaxed-card') || botMsg.querySelector('.ollama-ai-card');
-
-  const text = textEl ? textEl.innerText.trim() : '';
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-
-    navigator.clipboard.writeText(text).then(() => {
-
-      showGeminiToast('Tanggapan berhasil disalin ke clipboard');
-
-    }).catch(() => {
-
-      showGeminiToast('Teks tersalin');
-
-    });
-
-  } else {
-
-    showGeminiToast('Teks tersalin');
-
-  }
-
-};
-
-window.toastAiFeedback = function(btn) {
-
-  btn.classList.toggle('active');
-
-  if (btn.classList.contains('active')) {
-
-    showGeminiToast('Terima kasih atas tanggapan Anda!');
-
-  }
-
-};
-
-window.retryAiResponse = function() {
-
-  if (lastUserAiPrompt) {
-
-    const input = document.getElementById('desktopAiPagePromptInput') || document.getElementById('desktopAiPromptInput');
-
-    if (input) input.value = lastUserAiPrompt;
-
-    window.sendDesktopAiPagePrompt();
-
-  } else {
-
-    showGeminiToast('Tidak ada pesan sebelumnya untuk dimuat ulang');
-
-  }
-
-};
-
-let isRecordingVoice = false;
-
-window.toggleDesktopAiVoice = function() {
-
-  const micBtn = document.getElementById('desktopAiMicBtn');
-
-  const input = document.getElementById('desktopAiPagePromptInput') || document.getElementById('desktopAiPromptInput');
-
-  isRecordingVoice = !isRecordingVoice;
-
-  if (micBtn) micBtn.classList.toggle('recording', isRecordingVoice);
-
-  if (isRecordingVoice) {
-
-    showGeminiToast('Mendengarkan... Silakan berbicara');
-
-    setTimeout(() => {
-
-      if (isRecordingVoice && input) {
-
-        input.value = 'Tolong berikan rekomendasi program kerja unggulan untuk semester ini';
-
-        window.autoResizeGeminiTextarea(input);
-
-        isRecordingVoice = false;
-
-        if (micBtn) micBtn.classList.remove('recording');
-
-        showGeminiToast('Suara berhasil ditranskrip');
-
-      }
-
-    }, 2800);
-
-  } else {
-
-    showGeminiToast('Perekaman dibatalkan');
-
-  }
-
-};
-
-function showGeminiToast(msg) {
-
-  let toast = document.getElementById('geminiFloatingToast');
-
-  if (!toast) {
-
-    toast = document.createElement('div');
-
-    toast.id = 'geminiFloatingToast';
-
-    toast.className = 'gemini-toast';
-
-    document.body.appendChild(toast);
-
-  }
-
-  toast.textContent = msg;
-
-  toast.classList.add('show');
-
-  setTimeout(() => {
-
-    toast.classList.remove('show');
-
-  }, 2400);
-
-}
-
-if (document.readyState === 'loading') {
-
-} else {
-
-}
-
-document.addEventListener('keydown', function(e) {
-
-  if (e.key === 'Escape') {
-
-    closeDesktopSidebar();
-
-    closeDesktopStatsModal();
-
-    closeDesktopChatModal();
-
-    closeDesktopDetailModal();
-
-    closeDesktopAiChat();
-
-  }
-
-});
-
-window.toggleDesktopAiChat = function() {
-  const modal = document.getElementById("desktopAiModal");
-  if (modal) {
-    modal.classList.toggle("open");
-    if (modal.classList.contains("open")) {
-      const input = document.getElementById("desktopAiPromptInput");
-      if (input) setTimeout(() => input.focus(), 150);
-    }
-  } else {
-    if (typeof handleDesktopNavClick === "function") {
-      handleDesktopNavClick("ai");
-    } else if (typeof navigateTo === "function") {
-      navigateTo("ai");
-    }
-  }
-};
-
-window.closeDesktopAiChat = function() {
-  const modal = document.getElementById("desktopAiModal");
-  if (modal) modal.classList.remove("open");
-  if (window.resetLiquidNavToHome) window.resetLiquidNavToHome();
-};
-
-window.openDesktopAiChat = function() {
-  const modal = document.getElementById("desktopAiModal");
-  if (modal) {
-    modal.classList.add("open");
-    const input = document.getElementById("desktopAiPromptInput");
-    if (input) setTimeout(() => input.focus(), 150);
-  } else {
-    if (typeof handleDesktopNavClick === "function") {
-      handleDesktopNavClick("ai");
-    } else if (typeof navigateTo === "function") {
-      navigateTo("ai");
-    }
-  }
 };
 
 window.triggerDesktopAiImageUpload = function() {
@@ -4798,61 +4885,9 @@ window.triggerDesktopAiImageUpload = function() {
 
 };
 
-window.handleDesktopAiImageSelect = function(e) {
+window.handleDesktopAiImageSelect = function(e) { window.handleDesktopAiComposerFiles(e); };
 
-  const file = e.target.files && e.target.files[0];
-
-  if (!file) return;
-
-  if (!file.type.startsWith('image/')) {
-
-    alert('Silakan pilih file gambar (JPG, PNG, WebP).');
-
-    return;
-
-  }
-
-  const reader = new FileReader();
-
-  reader.onload = function(evt) {
-
-    pendingDesktopAiImage = {
-
-      name: file.name,
-
-      type: file.type,
-
-      dataUrl: evt.target.result
-
-    };
-
-    const previewContainer = document.getElementById('desktopAiImgPreview');
-
-    const previewImg = document.getElementById('desktopAiImgPreviewSrc');
-
-    if (previewImg) previewImg.src = evt.target.result;
-
-    if (previewContainer) previewContainer.style.display = 'flex';
-
-  };
-
-  reader.readAsDataURL(file);
-
-};
-
-window.removeDesktopAiImage = function() {
-
-  pendingDesktopAiImage = null;
-
-  const fileInput = document.getElementById('desktopAiImageFileInput');
-
-  if (fileInput) fileInput.value = '';
-
-  const previewContainer = document.getElementById('desktopAiImgPreview');
-
-  if (previewContainer) previewContainer.style.display = 'none';
-
-};
+window.removeDesktopAiImage = function() { window.clearComposerFiles(); };
 
 // Old modal aliases forwarded to Gemini Engine
 
@@ -6293,7 +6328,7 @@ let activeComposerFilterTab = 'all';
 
 let hoveredComposerModelId = null;
 
-let composerAttachedFilesList = [];
+// composerAttachedFilesList declared in Unified Attachment Engine
 
 let composerVoiceRecordingActive = false;
 
@@ -6364,29 +6399,7 @@ function getComposerProviderSvg(provider, size = 16) {
   </svg>`;
 }
 
-function updateComposerSubmitButtonState() {
-
-  const input = document.getElementById('desktopAiPagePromptInput');
-
-  const btn = document.getElementById('desktopAiSendBtn');
-
-  if (!btn) return;
-
-  const hasText = input && input.value.trim().length > 0;
-
-  const hasFiles = composerAttachedFilesList.length > 0;
-
-  if (hasText || hasFiles) {
-
-    btn.classList.add('ready');
-
-  } else {
-
-    btn.classList.remove('ready');
-
-  }
-
-}
+// updateComposerSubmitButtonState handled in Unified Attachment Engine
 
 window.handleDesktopAiComposerInput = function(textarea) {
 
@@ -7370,67 +7383,7 @@ window.toggleMobileAiVoiceRecord = function() {
   }
 };
 
-window.handleDesktopAiComposerFiles = function(event) {
-
-  const files = Array.from(event.target.files || []);
-
-  if (files.length === 0) return;
-
-  files.forEach(f => {
-
-    composerAttachedFilesList.push(f.name);
-
-  });
-
-  renderComposerAttachedChips();
-
-  updateComposerSubmitButtonState();
-
-  event.target.value = '';
-
-};
-
-function renderComposerAttachedChips() {
-
-  const tray = document.getElementById('desktopAiAttachedChips');
-
-  if (!tray) return;
-
-  if (composerAttachedFilesList.length === 0) {
-
-    tray.style.display = 'none';
-
-    tray.innerHTML = '';
-
-    return;
-
-  }
-
-  tray.style.display = 'flex';
-
-  tray.innerHTML = composerAttachedFilesList.map((name, idx) => `
-
-    <div class="aic-attached-chip">
-
-      <span>📄 ${escapeHtmlSafe(name)}</span>
-
-      <button type="button" class="aic-chip-close" onclick="removeComposerFile(${idx})" title="Hapus file">✕</button>
-
-    </div>
-
-  `).join('');
-
-}
-
-window.removeComposerFile = function(idx) {
-
-  composerAttachedFilesList.splice(idx, 1);
-
-  renderComposerAttachedChips();
-
-  updateComposerSubmitButtonState();
-
-};
+// Duplicate composer attachment methods removed; managed by Unified Attachment Engine
 
 window.closeAllComposerPopovers = function(except = '') {
   if (except !== 'mode' && typeof window.shiftModelButtonForMode === 'function') {

@@ -11981,6 +11981,70 @@ body.nimbus-is-dragging * {
 
 }
 
+.aic-attached-chip img {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.aic-attached-chip .aic-chip-text {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aic-composer-card.dragover {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+}
+
+.gemini-user-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gemini-user-thumb-wrap {
+  position: relative;
+  max-width: 260px;
+  max-height: 220px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+
+.gemini-user-thumb-wrap:hover {
+  transform: scale(1.02);
+}
+
+.gemini-user-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gemini-user-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+  margin-bottom: 6px;
+}
+
 /* Bottom Pro Banner (LIGHT / WHITE THEME) */
 
 .aic-pro-banner {

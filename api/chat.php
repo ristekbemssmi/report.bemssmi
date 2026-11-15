@@ -88,9 +88,10 @@ $body = json_decode($rawInput, true);
 
 $prompt = trim($body['prompt'] ?? '');
 $image = $body['image'] ?? null;
+$images = is_array($body['images'] ?? null) ? $body['images'] : (!empty($image['data']) ? [$image] : []);
 $requestedModel = $body['model'] ?? 'glm-4-7-flash:free';
 
-if (!$prompt && !$image) {
+if (!$prompt && empty($images)) {
     http_response_code(400);
     echo json_encode(['error' => 'Prompt atau gambar wajib diisi.']);
     exit;
@@ -467,10 +468,10 @@ if ($violation) {
     exit;
 }
 
-if (!$apiKey || strpos($apiKey, 'your-kenari-api-key') !== false) {
+if (!$apiKey || strpos($apiKey, 'your-') !== false) {
     echo json_encode([
-        'reply' => 'KENARI_API_KEY belum dikonfigurasi di file .env Hostinger. Silakan masukkan kunci API Kenari.id Anda agar Langkari AI dapat merespons.',
-        'rawReply' => 'KENARI_API_KEY belum dikonfigurasi.',
+        'reply' => 'Kunci akses AI Gateway belum dikonfigurasi di server. Silakan hubungi administrator sistem.',
+        'rawReply' => 'AI_KEY belum dikonfigurasi.',
         'error' => true,
         'code' => 'MISSING_API_KEY'
     ]);
@@ -516,14 +517,18 @@ $systemInstruction = "Anda adalah Langkari AI, asisten kecerdasan buatan resmi u
 
 // 6. Request Payload
 $userContent = $prompt ?: 'Halo, jelaskan peranmu sebagai Langkari AI.';
-if (!empty($image['data'])) {
-    $dataUrl = (strpos($image['data'], 'data:') === 0)
-        ? $image['data']
-        : 'data:' . ($image['mimeType'] ?? 'image/png') . ';base64,' . $image['data'];
+if (!empty($images)) {
     $userContent = [
-        ['type' => 'text', 'text' => $prompt ?: 'Jelaskan gambar ini dalam konteks kegiatan BEM Langkah Berdikari.'],
-        ['type' => 'image_url', 'image_url' => ['url' => $dataUrl]]
+        ['type' => 'text', 'text' => $prompt ?: 'Jelaskan dan analisis gambar terlampir secara detail dalam konteks kegiatan atau informasi yang terlihat.']
     ];
+    foreach ($images as $img) {
+        if (!empty($img['data'])) {
+            $dataUrl = (strpos($img['data'], 'data:') === 0)
+                ? $img['data']
+                : 'data:' . ($img['mimeType'] ?? 'image/jpeg') . ';base64,' . $img['data'];
+            $userContent[] = ['type' => 'image_url', 'image_url' => ['url' => $dataUrl]];
+        }
+    }
 }
 
 $payload = [
@@ -541,8 +546,8 @@ $candidateModels = in_array($requestedModel, $freeModels)
     : $freeModels;
 
 // Jika menyertakan gambar, prioritaskan model multimodal (qwen3-8-omni-flash:free)
-if (!empty($image['data'])) {
-    $candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free', 'laguna-xs-2-1:free'];
+if (!empty($images)) {
+    $candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
 }
 
 $success = false;
@@ -623,8 +628,8 @@ if ($success) {
     ]);
 } else {
     $msg = ($lastHttpCode === 429)
-        ? 'Kuota model gratis Kenari.id sedang padat. Mohon tunggu 1 menit lalu coba lagi 🙏'
-        : 'Server AI sedang sibuk atau kunci API belum valid. Silakan coba kembali sesaat lagi.';
+        ? 'Layanan Langkari AI sedang menerima lalu lintas yang cukup padat saat ini. Mohon tunggu 1 menit lalu coba lagi ya 🙏'
+        : 'Server Langkari AI sedang mengalami kendala pemrosesan sesaat. Silakan coba kembali dalam beberapa detik 🙏';
     echo json_encode([
         'reply' => $msg,
         'rawReply' => $msg,
