@@ -22,9 +22,8 @@ function sendChatApiRequest(payload) {
     return Promise.reject(new Error('FILE_PROTOCOL_LOCAL'));
   }
 
-  const isNode = (window.location.port === '3000' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const primaryUrl = isNode ? '/api/chat' : 'api/chat.php';
-  const fallbackUrl = isNode ? 'api/chat.php' : '/api/chat';
+  const primaryUrl = '/api/chat';
+  const fallbackUrl = 'api/chat.php';
 
   const doFetch = function(url) {
     return fetch(url, {
@@ -2207,6 +2206,27 @@ window.sendAiScreenPrompt = function() {
   const activeInfo = typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo() : { modelName: 'glm-4-7-flash:free', modelProvider: 'glm' };
   const requestedModel = activeInfo.modelName || 'glm-4-7-flash:free';
 
+  const promptVal = (typeof text !== 'undefined' ? text : promptText) || '';
+  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(promptVal, attachedImage) : null;
+  if (fastGuardrail && fastGuardrail.includes('AKSES DIBATASI')) {
+    if (searchingMsg) searchingMsg.remove();
+    const botMsg = document.createElement('div');
+    botMsg.className = 'gemini-msg bot';
+    botMsg.innerHTML = `
+      <div class="gemini-bot-avatar">
+        ${getComposerProviderSvg(activeInfo.modelProvider, 22)}
+      </div>
+      <div class="gemini-bot-content">
+        <div class="gemini-response-text" style="width: 100%;">
+          ${fastGuardrail}
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(botMsg);
+    if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
+    return;
+  }
+
   sendChatApiRequest({
     prompt: promptText,
     model: requestedModel,
@@ -2328,18 +2348,18 @@ function generateAiResponse(query, hasImage) {
   const sexualKeywords = ['seks', 'sex', 'bokep', 'porno', 'porn', 'ngentot', 'colmek', 'masturbasi', 'kontol', 'memek', 'bugil', 'lendir', 'erotis', 'desah', 'vagina', 'penis', 'payudara', 'tetek', 'toket', 'nude', 'nsfw', 'open bo'];
   for (const kw of sexualKeywords) {
     if (qLower.includes(kw)) {
-      return '<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem membatasi interaksi yang berkaitan dengan konten eksplisit, seksual, atau materi dewasa.<br><br>Silakan ajukan pertanyaan lain seputar topik akademik, perkuliahan, atau layanan kampus.</p>';
+      return '<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk materi dewasa, konten seksual, atau konten eksplisit.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, topik akademik, perkuliahan, atau layanan kampus.</p>';
     }
   }
 
-  const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
+  const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|\b(hack|hacking|hacker|ngehack|heker|retas|meretas|peretasan)\b|nasa|\b(exploit|exploiting|eksploitasi|cyber\s*attack|defacing|deface|carding|pentest)\b|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan(\s*horse)?|malware|ddos(\s*attack)?|brute\s*force|bypass\s*(login|auth|password|admin)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
   if (jailbreakRegex.test(query)) {
-    return '<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem tidak menyediakan kode peretasan, instruksi eksploitasi keamanan, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>';
+    return '<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk aktivitas yang berkaitan dengan peretasan, instruksi eksploitasi keamanan, malware, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>';
   }
 
-  const politicsRegex = /\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
+  const politicsRegex = /\b(politik|partai(\s*politik)?|parpol|pemilu|pilpres|pilkada|caleg|paslon|coblos|timses|koalisi|oposisi|dinasti\s*politik|debat\s*capres|prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
   if (politicsRegex.test(qLower)) {
-    return '<h4>Akses Dibatasi</h4><p>Tidak dapat menampilkan jawaban untuk permintaan ini demi menjaga netralitas informasi. Sistem dibatasi untuk tidak membahas figur politik praktis, kandidat, partai politik, maupun opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>';
+    return '<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk menjaga netralitas informasi dari pembahasan politik praktis atau opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>';
   }
 
   // Bantuan Soal Matematika & LaTeX
@@ -4007,18 +4027,18 @@ function getSmartGeminiResponseHTML(promptText, attachedImage) {
   const sexualKeywords = ['seks', 'sex', 'bokep', 'porno', 'porn', 'ngentot', 'colmek', 'masturbasi', 'kontol', 'memek', 'bugil', 'lendir', 'erotis', 'desah', 'vagina', 'penis', 'open bo'];
   for (const kw of sexualKeywords) {
     if (q.includes(kw)) {
-      return `<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem membatasi interaksi yang berkaitan dengan konten eksplisit, seksual, atau materi dewasa.<br><br>Silakan ajukan pertanyaan lain seputar topik akademik, perkuliahan, atau layanan kampus.</p>`;
+      return `<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk materi dewasa, konten seksual, atau konten eksplisit.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, topik akademik, perkuliahan, atau layanan kampus.</p>`;
     }
   }
 
-  const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
+  const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|\b(hack|hacking|hacker|ngehack|heker|retas|meretas|peretasan)\b|nasa|\b(exploit|exploiting|eksploitasi|cyber\s*attack|defacing|deface|carding|pentest)\b|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan(\s*horse)?|malware|ddos(\s*attack)?|brute\s*force|bypass\s*(login|auth|password|admin)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
   if (jailbreakRegex.test(promptText)) {
-    return `<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem tidak menyediakan kode peretasan, instruksi eksploitasi keamanan, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>`;
+    return `<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk aktivitas yang berkaitan dengan peretasan, instruksi eksploitasi keamanan, malware, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>`;
   }
 
-  const politicsRegex = /\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
+  const politicsRegex = /\b(politik|partai(\s*politik)?|parpol|pemilu|pilpres|pilkada|caleg|paslon|coblos|timses|koalisi|oposisi|dinasti\s*politik|debat\s*capres|prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
   if (politicsRegex.test(q)) {
-    return `<h4>Akses Dibatasi</h4><p>Tidak dapat menampilkan jawaban untuk permintaan ini demi menjaga netralitas informasi. Sistem dibatasi untuk tidak membahas figur politik praktis, kandidat, partai politik, maupun opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>`;
+    return `<h4>AKSES DIBATASI</h4><p>Permintaan tidak dapat diproses. Akses dibatasi untuk menjaga netralitas informasi dari pembahasan politik praktis atau opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>`;
   }
 
   const dateStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -4441,6 +4461,27 @@ window.sendDesktopAiPagePrompt = function() {
   // Live Inference via /api/chat (Kenari.id Gateway) with Fallback
   const activeInfo = typeof getActiveAiModelInfo === 'function' ? getActiveAiModelInfo() : { modelName: 'glm-4-7-flash:free', modelProvider: 'glm' };
   const requestedModel = activeInfo.modelName || 'glm-4-7-flash:free';
+
+  const promptVal = (typeof text !== 'undefined' ? text : promptText) || '';
+  const fastGuardrail = typeof getSmartGeminiResponseHTML === 'function' ? getSmartGeminiResponseHTML(promptVal, attachedImage) : null;
+  if (fastGuardrail && fastGuardrail.includes('AKSES DIBATASI')) {
+    if (searchingMsg) searchingMsg.remove();
+    const botMsg = document.createElement('div');
+    botMsg.className = 'gemini-msg bot';
+    botMsg.innerHTML = `
+      <div class="gemini-bot-avatar">
+        ${getComposerProviderSvg(activeInfo.modelProvider, 22)}
+      </div>
+      <div class="gemini-bot-content">
+        <div class="gemini-response-text" style="width: 100%;">
+          ${fastGuardrail}
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(botMsg);
+    if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
+    return;
+  }
 
   sendChatApiRequest({
     prompt: text,
