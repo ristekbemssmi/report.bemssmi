@@ -494,7 +494,7 @@ const formatReply = (raw, userPrompt = '') => {
   return detectAndAttachDivisionButtons(html, raw, userPrompt);
 };
 
-async function callKenariChat(model, prompt, image, apiKey) {
+async function callKenariChat(model, prompt, image, apiKey, externalSignal) {
   const url = `${KENARI_BASE_URL}/chat/completions`;
 
   let userContent;
@@ -520,15 +520,19 @@ async function callKenariChat(model, prompt, image, apiKey) {
     max_tokens: 1024
   };
 
-  return fetch(url, {
+  const fetchOptions = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(10000)
-  });
+    body: JSON.stringify(payload)
+  };
+  if (externalSignal) {
+    fetchOptions.signal = externalSignal;
+  }
+
+  return fetch(url, fetchOptions);
 }
 
 export default async function handler(req, res) {
@@ -576,12 +580,14 @@ export default async function handler(req, res) {
     }
 
     const requestedModel = model || process.env.DEFAULT_AI_MODEL || 'glm-4-7-flash:free';
-    let candidateModels = FREE_MODELS.includes(requestedModel)
-      ? [requestedModel, ...FREE_MODELS.filter(m => m !== requestedModel)]
-      : FREE_MODELS;
-
+    let candidateModels;
     if (image && image.data) {
-      candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free', 'laguna-xs-2-1:free'];
+      candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+    } else {
+      const baseModels = ['laguna-xs-2-1:free', 'qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+      candidateModels = requestedModel && baseModels.includes(requestedModel)
+        ? [requestedModel, ...baseModels.filter(m => m !== requestedModel)]
+        : baseModels;
     }
 
     let success = false;
@@ -589,21 +595,37 @@ export default async function handler(req, res) {
     let finalReply = '';
     let usedModel = candidateModels[0];
 
-    for (const m of candidateModels) {
+    const raceController = new AbortController();
+    const timeoutId = setTimeout(() => raceController.abort(), 12000);
+
+    async function fetchModel(m) {
       try {
-        const r = await callKenariChat(m, prompt, image, apiKey);
-        if (r.ok) {
-          const data = await r.json();
-          finalReply = data?.choices?.[0]?.message?.content || 'Maaf, tidak ada balasan.';
-          usedModel = m;
-          success = true;
-          break;
-        } else {
-          lastStatus = r.status;
+        const r = await callKenariChat(m, prompt, image, apiKey, raceController.signal);
+        if (!r.ok) {
+          const errBody = await r.text().catch(() => '');
+          throw new Error(`HTTP ${r.status}: ${errBody}`);
         }
+        const data = await r.json();
+        const replyText = data?.choices?.[0]?.message?.content;
+        if (!replyText || !replyText.trim()) {
+          throw new Error(`Empty content from ${m}`);
+        }
+        return { model: m, reply: replyText };
       } catch (e) {
-        console.error('Call Kenari Error:', e.message);
+        throw e;
       }
+    }
+
+    try {
+      const winner = await Promise.any(candidateModels.map(m => fetchModel(m)));
+      clearTimeout(timeoutId);
+      raceController.abort();
+      finalReply = winner.reply;
+      usedModel = winner.model;
+      success = true;
+    } catch (aggErr) {
+      clearTimeout(timeoutId);
+      lastStatus = 500;
     }
 
     if (success) {

@@ -1989,8 +1989,9 @@ function streamTextReveal(targetEl, htmlContent, speedMs = 14, onComplete) {
                    document.getElementById('aiScreenChatFlow');
 
   let cur = 0;
-  // Dynamic smooth speed: between 7ms and speedMs to maintain buttery responsiveness
-  const tokenDelay = Math.max(7, Math.min(speedMs, Math.round(1800 / total)));
+  // Dynamic ultra-fast batch streaming (2-4 words per frame, high throughput)
+  const batchSize = Math.max(2, Math.min(4, Math.ceil(total / 60)));
+  const tokenDelay = Math.max(5, Math.min(10, Math.round(1000 / total)));
 
   function nextStep() {
     if (cur >= total) {
@@ -2002,10 +2003,11 @@ function streamTextReveal(targetEl, htmlContent, speedMs = 14, onComplete) {
       return;
     }
 
-    const span = revealSpans[cur++];
-
-    span.style.display = 'inline';
-    span.after(cursor);
+    for (let b = 0; b < batchSize && cur < total; b++) {
+      const span = revealSpans[cur++];
+      span.style.display = 'inline';
+      span.after(cursor);
+    }
 
     if (chatFlow) {
       chatFlow.scrollTop = chatFlow.scrollHeight;

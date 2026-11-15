@@ -555,7 +555,7 @@ const formatReply = (raw, userPrompt = '') => {
   return detectAndAttachDivisionButtons(html, raw, userPrompt);
 };
 
-async function callKenariChat(model, prompt, image, apiKey) {
+async function callKenariChat(model, prompt, image, apiKey, externalSignal) {
   const url = `${KENARI_BASE_URL}/chat/completions`;
 
   let userContent;
@@ -581,15 +581,19 @@ async function callKenariChat(model, prompt, image, apiKey) {
     max_tokens: 1024
   };
 
-  return fetch(url, {
+  const fetchOptions = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(10000)
-  });
+    body: JSON.stringify(payload)
+  };
+  if (externalSignal) {
+    fetchOptions.signal = externalSignal;
+  }
+
+  return fetch(url, fetchOptions);
 }
 
 const MIME_TYPES = {
@@ -684,12 +688,15 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        let candidateModels = FREE_MODELS.includes(requestedModel)
-          ? [requestedModel, ...FREE_MODELS.filter(m => m !== requestedModel)]
-          : FREE_MODELS;
-
+        let candidateModels;
         if (image && image.data) {
-          candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free', 'laguna-xs-2-1:free'];
+          candidateModels = ['qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+        } else {
+          // Model Race: Panggil model gesit (laguna-xs & qwen3-8) bersama requested model
+          const baseModels = ['laguna-xs-2-1:free', 'qwen3-8-omni-flash:free', 'glm-4-7-flash:free'];
+          candidateModels = requestedModel && baseModels.includes(requestedModel)
+            ? [requestedModel, ...baseModels.filter(m => m !== requestedModel)]
+            : baseModels;
         }
 
         let success = false;
@@ -698,25 +705,40 @@ const server = http.createServer(async (req, res) => {
         let finalReply = '';
         let usedModel = candidateModels[0];
 
-        for (const model of candidateModels) {
+        // Parallel Model Race: kirim request ke semua candidate models secara bersamaan.
+        // Yang pertama merespons valid langsung diambil, request lain langsung di-abort!
+        const raceController = new AbortController();
+        const timeoutId = setTimeout(() => raceController.abort(), 12000);
+
+        async function fetchModel(m) {
           try {
-            const apiRes = await callKenariChat(model, prompt, image, apiKey);
-            if (apiRes.ok) {
-              const data = await apiRes.json();
-              const replyText = data?.choices?.[0]?.message?.content || 'Maaf, tidak ada tanggapan yang dihasilkan.';
-              finalReply = replyText;
-              usedModel = model;
-              success = true;
-              break;
-            } else {
-              lastStatus = apiRes.status;
-              lastErrorText = await apiRes.text();
-              console.error(`Kenari.id ${model} HTTP ${apiRes.status}:`, lastErrorText);
+            const apiRes = await callKenariChat(m, prompt, image, apiKey, raceController.signal);
+            if (!apiRes.ok) {
+              const errBody = await apiRes.text().catch(() => '');
+              throw new Error(`HTTP ${apiRes.status}: ${errBody}`);
             }
-          } catch (netErr) {
-            console.error(`Network error on ${model}:`, netErr.message);
-            lastErrorText = netErr.message;
+            const data = await apiRes.json();
+            const replyText = data?.choices?.[0]?.message?.content;
+            if (!replyText || !replyText.trim()) {
+              throw new Error(`Empty content from ${m}`);
+            }
+            return { model: m, reply: replyText };
+          } catch (err) {
+            throw err;
           }
+        }
+
+        try {
+          const winner = await Promise.any(candidateModels.map(m => fetchModel(m)));
+          clearTimeout(timeoutId);
+          raceController.abort();
+          finalReply = winner.reply;
+          usedModel = winner.model;
+          success = true;
+        } catch (aggErr) {
+          clearTimeout(timeoutId);
+          lastStatus = 500;
+          lastErrorText = aggErr.message || 'Semua model gratis sedang padat';
         }
 
         if (success) {
