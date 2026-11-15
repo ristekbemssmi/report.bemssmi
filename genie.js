@@ -1,25 +1,3 @@
-/*! genie.js - animasi buka/tutup jendela dari sebuah pemicu (tanpa dependensi)
- *
- * Mode:
- *   'natural' (default): jendela tumbuh dari titik pemicu dengan gerak pegas (spring)
- *                        yang sedikit memantul saat buka, dan menutup cepat dan halus.
- *   'genie'            : efek tersedot ala macOS (clip-path + transform).
- *   'scale'            : zoom + fade sederhana.
- *
- * API:
- *   Genie.open(windowEl, triggerEl, options?)
- *   Genie.close(windowEl)
- *   Genie.toggle(windowEl, triggerEl, options?)
- *   Genie.defaults   -> { mode, spring:{damping,speed}, closeEasing, ... }
- *
- * Opsi: mode, openDuration (ms), closeDuration (ms), openEasing, closeEasing,
- *       spring: { damping: 0.4-0.95 (kecil = lebih memantul), speed: 8-25 (besar = lebih cepat) }
- *
- * Atribut HTML (auto-init):
- *   data-genie-toggle="#id"  | data-genie-open="#id"  (pada pemicu)
- *   data-genie-close         (pada tombol di dalam jendela)
- *   data-genie-mode="natural|genie|scale"  (pada jendela, opsional)
- */
 (function (global) {
   'use strict';
 
@@ -47,7 +25,6 @@
     return s;
   }
 
-  // ---- Easing pegas, dibuat sebagai CSS linear() ----
   function springEasing(sp) {
     var fallback = 'cubic-bezier(.22, 1, .36, 1)';
     if (!(global.CSS && CSS.supports && CSS.supports('animation-timing-function', 'linear(0, 1)'))) return fallback;
@@ -64,7 +41,6 @@
     return (springCache[key] = 'linear(' + pts.join(', ') + ')');
   }
 
-  // ---- Keyframe ----
   var CLIP_FULL   = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
   var CLIP_FUNNEL = 'polygon(0% 0%, 100% 0%, 55% 100%, 45% 100%)';
   var CLIP_NECK   = 'polygon(0% 0%, 100% 0%, 66% 100%, 34% 100%)';
@@ -131,7 +107,6 @@
     return cfg;
   }
 
-  // ---- Inti ----
   function play(win, s, closing) {
     var cfg = s.cfg;
     var frames = buildFrames(win, s.trigger, cfg.mode);
@@ -222,7 +197,6 @@
     if (stateOf(win).open) close(win); else open(win, trigger, options);
   }
 
-  // ---- Auto-init lewat atribut data-* ----
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-genie-toggle],[data-genie-open],[data-genie-close]');
     if (!el) return;

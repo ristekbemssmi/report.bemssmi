@@ -1,4 +1,4 @@
-:root {
+﻿:root {
 
   --c-dark-navy: #192338;
 
@@ -901,6 +901,8 @@ html, body {
   line-height: 1.2;
 
   letter-spacing: -0.01em;
+
+  text-transform: uppercase;
 
 }
 
@@ -5870,6 +5872,8 @@ body.admin-mode-active .msg-delete-btn {
   margin: 0 0 3px 0;
 
   line-height: 1.2;
+
+  text-transform: uppercase;
 
 }
 
@@ -14787,28 +14791,179 @@ body.desktop-single-page-locked #desktopPageAI,
   display: inline-block !important;
   font-family: inherit !important;
   font-size: 15px !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   line-height: 1.4 !important;
   letter-spacing: -0.2px !important;
-  background: linear-gradient(110deg, #64748B 35%, #0F172A 50%, #64748B 75%, #64748B) !important;
-  background-size: 200% 100% !important;
+  background: linear-gradient(
+    90deg,
+    #1E2E4F 0%,
+    #2563EB 25%,
+    #EC8129 50%,
+    #2563EB 75%,
+    #1E2E4F 100%
+  ) !important;
+  background-size: 200% auto !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
-  animation: shiningTextMove 2s linear infinite !important;
+  animation: shiningTextMove 2.2s linear infinite !important;
   user-select: none !important;
 }
 
 @keyframes shiningTextMove {
   0% {
-    background-position: 200% 0;
+    background-position: 0% 50%;
   }
   100% {
-    background-position: -200% 0;
+    background-position: 200% 50%;
   }
 }
 
+/* Minimalist Thinking State: No boxy pill, no clutter */
+.gemini-msg.gemini-searching,
+.gemini-msg.searching {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 0 !important;
+  margin: 10px 0 !important;
+}
+
+.gemini-msg.gemini-searching .gemini-bot-avatar,
+.gemini-msg.searching .gemini-bot-avatar {
+  animation: thinkingAvatarPulse 1.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes thinkingAvatarPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.05);
+    opacity: 1;
+    filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.35));
+  }
+}
+
+/* ==========================================================================
+   SC (STEERING COMMITTEE) FULL-WIDTH SYMMETRICAL CARDS (MOBILE & PC)
+   ========================================================================== */
+
+/* Mobile: Span 2 Kolom Penuh */
+.room-grid .sc-full-width {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 72px !important;
+  padding: 14px 18px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+  border-radius: 20px !important;
+}
+
+.room-grid .sc-full-width .sc-full-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+.room-grid .sc-full-width .division-card-arrow {
+  position: static !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Web PC: Span 4 Kolom Penuh (Identik Minimalis Seperti di Mobile) */
+.desktop-cards-grid .desktop-division-card.desktop-sc-full-card,
+.desktop-cards-grid .desktop-sc-full-card,
+.desktop-division-card.desktop-sc-full-card {
+  grid-column: 1 / -1 !important;
+  grid-column: 1 / span 4 !important;
+  grid-column: span 4 !important;
+  width: 100% !important;
+  aspect-ratio: auto !important;
+  min-height: 72px !important;
+  max-height: 84px !important;
+  height: auto !important;
+  padding: 16px 24px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-radius: 24px !important;
+  background: #FFFFFF !important;
+  border: 1.8px solid #1E2E4F !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  animation: none !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease !important;
+}
+
+.desktop-cards-grid .desktop-division-card.desktop-sc-full-card:hover,
+.desktop-cards-grid .desktop-sc-full-card:hover,
+.desktop-division-card.desktop-sc-full-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 14px 30px rgba(30, 46, 79, 0.1) !important;
+  border-color: #EC8129 !important;
+}
+
+.desktop-sc-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+.desktop-sc-title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #192338 !important;
+  margin: 0 !important;
+  letter-spacing: -0.2px !important;
+}
+
+.desktop-sc-subtitle {
+  font-size: 13.5px !important;
+  color: #64748B !important;
+  margin: 3px 0 0 0 !important;
+  font-weight: 500 !important;
+  display: block !important;
+}
+
+.desktop-sc-arrow {
+  position: static !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  border: 1.5px solid #1E2E4F !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.desktop-cards-grid .desktop-division-card.desktop-sc-full-card:hover .desktop-sc-arrow,
+.desktop-cards-grid .desktop-sc-full-card:hover .desktop-sc-arrow,
+.desktop-division-card.desktop-sc-full-card:hover .desktop-sc-arrow {
+  background: #EC8129 !important;
+  border-color: #EC8129 !important;
+  color: #FFFFFF !important;
+  transform: translate(2px, -2px) !important;
+}
 /* Minimalist Thinking State: No boxy pill, no clutter */
 .gemini-msg.gemini-searching,
 .gemini-msg.searching {
@@ -15653,23 +15808,29 @@ body.desktop-single-page-locked #desktopPageAI,
    LATEX MATH, CODE SNIPPET CARDS, & INTERACTIVE DIVISION CHAT ACTIONS
    ========================================================================== */
 
-/* KaTeX Math Formatting */
+/* KaTeX Math Formatting - Antigravity Standard */
 .katex-math-display {
   display: block;
-  margin: 12px 0;
-  padding: 10px 14px;
+  margin: 14px 0;
+  padding: 14px 18px;
   background: rgba(49, 72, 122, 0.04);
-  border: 1px solid rgba(49, 72, 122, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(49, 72, 122, 0.14);
+  border-radius: 10px;
   overflow-x: auto;
   overflow-y: hidden;
   text-align: center;
   max-width: 100%;
   box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(49, 72, 122, 0.04);
 }
 
 .katex-math-display::-webkit-scrollbar {
-  height: 4px;
+  height: 5px;
+}
+
+.katex-math-display::-webkit-scrollbar-track {
+  background: rgba(49, 72, 122, 0.04);
+  border-radius: 4px;
 }
 
 .katex-math-display::-webkit-scrollbar-thumb {
@@ -15678,7 +15839,7 @@ body.desktop-single-page-locked #desktopPageAI,
 }
 
 .katex {
-  font-size: 1.05em !important;
+  font-size: 1.08em !important;
   text-rendering: auto;
 }
 
@@ -15691,9 +15852,17 @@ body.desktop-single-page-locked #desktopPageAI,
 
 .katex-inline-math {
   display: inline-block;
-  vertical-align: -0.1em;
-  padding: 0 2px;
+  vertical-align: -0.12em;
+  padding: 0 3px;
   max-width: 100%;
+  font-size: 1.02em;
+}
+
+[data-theme="dark"] .katex-math-display,
+.dark-theme .katex-math-display {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #F8FAFC;
 }
 
 /* Gemini Elegant Code Card */

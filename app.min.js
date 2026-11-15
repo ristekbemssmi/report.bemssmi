@@ -1,7 +1,4 @@
-/**
- * Core Utilities: HTML Escaping & API Dispatcher
- * Hoisted to top-level to prevent TDZ (Temporal Dead Zone) across Desktop & Mobile
- */
+
 function escapeHtmlSafe(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -18,10 +15,7 @@ function escapeHTML(str) {
 }
 window.escapeHTML = escapeHTML;
 
-/**
- * Helper: Smart API Dispatcher untuk Hostinger (PHP) & Localhost (Node.js)
- * Otomatis mendeteksi endpoint terbaik dan mendukung fallback jika mod_rewrite nonaktif
- */
+
 function sendChatApiRequest(payload) {
   // Jika dibuka langsung via file:// di browser tanpa web server
   if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
@@ -61,6 +55,22 @@ function sendChatApiRequest(payload) {
 window.sendChatApiRequest = sendChatApiRequest;
 
 const divisionsData = {
+  sc: {
+    key: 'sc',
+    name: 'SC',
+    subTitle: 'Steering Committee',
+    fullName: 'Steering Committee (Pengarah Organisasi)',
+    color: '#31487A',
+    logoImg: '',
+    href: 'https://ipb.link/report-card-2-sc',
+    webUrl: 'https://bemssmi.com',
+    kpi: 100,
+    kpiLabel: 'Strategis & Terarah',
+    activeForm: 'Konsultasi Pengarah SC',
+    membersCount: 'Pengarah Organisasi',
+    desc: 'Steering Committee berperan sebagai badan pengarah dan penasihat strategis organisasi bagi BEM SSMI IPB University Kabinet Langkah Berdikari.',
+    pic: { name: 'Steering Committee', role: 'Pengarah BEM SSMI', wa: '' }
+  },
 
   bph: {
 
@@ -1706,9 +1716,7 @@ function getSearchingPillHTML(customModelName) {
   `;
 }
 
-/**
- * Helper: Salin Cuplikan Kode Gemini/Langkari
- */
+
 function copySnippetCode(btn) {
   if (!btn) return;
   const card = btn.closest('.gemini-code-card');
@@ -1734,10 +1742,7 @@ function copySnippetCode(btn) {
 }
 window.copySnippetCode = copySnippetCode;
 
-/**
- * Helper: Render LaTeX Math via KaTeX (renderToString & auto-render) - Antigravity Standard
- * Mendukung rumus terpisah ($$...$$ dan \[...\]) serta rumus sebaris ($...$ dan \(...\))
- */
+
 function renderLatexInHtml(html) {
   if (!html || typeof html !== "string") return html;
   const hasKatex = typeof window !== "undefined" && typeof window.katex !== "undefined" && typeof window.katex.renderToString === "function";
@@ -1838,9 +1843,7 @@ function renderLatexAndCodeInElement(el) {
 }
 window.renderLatexAndCodeInElement = renderLatexAndCodeInElement;
 
-/**
- * Helper: Pembuat Tombol Aksi Interaktif Report Card, Instagram & Portal Divisi BEM SSMI
- */
+
 function generateDivisionActionHtml(divKey) {
   var d = (typeof divisionsData !== "undefined" && divisionsData[divKey]) ? divisionsData[divKey] : null;
   if (!d) return "";
@@ -1905,10 +1908,7 @@ function detectAndAttachDivisionButtons(html, raw) {
 }
 window.detectAndAttachDivisionButtons = detectAndAttachDivisionButtons;
 
-/**
- * Progressive Text Reveal Animation for AI responses
- * Reveals words progressively with blur-to-focus and typing caret
- */
+
 function streamTextReveal(targetEl, htmlContent, speedMs = 14, onComplete) {
   if (!targetEl) {
     if (typeof onComplete === 'function') onComplete();
@@ -6230,11 +6230,7 @@ if (document.readyState === 'loading') {
 
 }
 
-/* ==========================================================================
 
-   AI PROMPT COMPOSER WITH MODEL SELECTOR (LIGHT / WHITE THEME) - APP LOGIC
-
-   ========================================================================== */
 
 const COMPOSER_MODELS = [
   { id: 'glm-4-7-flash', name: 'glm-4-7-flash:free', shortName: 'glm-4-7-flash:free', effort: 'Medium', provider: 'glm', tag: 'Gratis', isFav: true, efforts: ['Low', 'Medium', 'High'] },

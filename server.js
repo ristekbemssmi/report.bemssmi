@@ -7,9 +7,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ==============================================================================
-// 1. MUAT FILE .ENV
-// ==============================================================================
 function loadEnv() {
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -34,7 +31,6 @@ function loadEnv() {
 }
 loadEnv();
 
-// Inisialisasi KaTeX Server-Side Renderer untuk Rumus Matematika
 let serverKatex = null;
 try {
   const kPath = path.join(__dirname, 'vendor', 'katex', 'katex.min.js');
@@ -57,15 +53,12 @@ try {
 const PORT = process.env.PORT || 3000;
 const KENARI_BASE_URL = (process.env.KENARI_BASE_URL || 'https://kenari.id/v1').replace(/\/+$/, '');
 
-// 3 Model AI Gratis Resmi Kenari.id
 const FREE_MODELS = [
   'glm-4-7-flash:free',
   'qwen3-8-omni-flash:free',
   'laguna-xs-2-1:free'
 ];
 
-// Data Resmi 12 Biro, Departemen & BPH BEM SSMI IPB University (Kabinet Langkah Berdikari)
-// Sumber data resmi terintegrasi: https://bemssmi.com
 const DIVISION_INFO = {
   bph: {
     name: 'Badan Pengurus Harian (BPH)',
@@ -205,10 +198,20 @@ const DIVISION_INFO = {
     picName: '',
     picRole: 'Dept. Sosial dan Lingkungan',
     picWa: ''
+  },
+  sc: {
+    name: 'Steering Committee (SC)',
+    short: 'SC',
+    type: 'sc',
+    reportCard: 'https://ipb.link/report-card-2-sc',
+    webUrl: 'https://bemssmi.com',
+    desc: 'Steering Committee berperan sebagai badan pengarah dan penasihat strategis organisasi bagi BEM SSMI IPB University Kabinet Langkah Berdikari.',
+    picName: '',
+    picRole: 'Steering Committee',
+    picWa: ''
   }
 };
 
-// System Prompt Langkari AI dengan Sumber Resmi BEM SSMI IPB University
 const SYSTEM_INSTRUCTION = `Anda adalah Langkari AI, asisten kecerdasan buatan resmi untuk BEM SSMI (Badan Eksekutif Mahasiswa Sekolah Sains Data, Matematika dan Informatika) IPB University, Kabinet Langkah Berdikari.
 Website Resmi: https://bemssmi.com | Slogan: "Merajut Langkah, Mengukir Arah"
 
@@ -246,6 +249,19 @@ Pengetahuan Resmi Organisasi (Berdasarkan Portal Resmi https://bemssmi.com):
 6. ATURAN KONTAK KETUA/PIC DIVISI:
    Nomor kontak pribadi ketua divisi saat ini dikosongkan/belum dipublikasikan demi privasi fungsionaris. Arahkan pengguna ke tautan Report Card resmi, website https://bemssmi.com, Instagram resmi divisi (@bemssmi_bph, @medbrandnyasesemi, @rizzteknologia), atau Hotline Advokesma BEM SSMI (0855-1010-901). DILARANG mengarang nomor telepon atau nama fungsionaris.
 
+6b. ATURAN KHUSUS INSTAGRAM & REPORT CARD:
+   - Jika pengguna bertanya tentang INSTAGRAM atau media sosial suatu divisi/biro/departemen (misal: "instagram ristek", "ig ristek", "akun ig medbrand"):
+     * Berikan HANYA informasi akun Instagram dan tautan Instagram divisi tersebut (misal: "Akun Instagram resmi Biro Riset dan Teknologi (RISTEK) adalah @rizzteknologia | https://instagram.com/rizzteknologia").
+     * DILARANG KERAS menyertakan tautan Report Card jika pengguna hanya menanyakan Instagram!
+   - Jika pengguna bertanya tentang REPORT CARD / LAPORAN / RAPOR suatu divisi (misal: "report card ristek", "report card sc"):
+     * Berikan HANYA tautan Report Card divisi yang ditanyakan tersebut (misal untuk Ristek: https://ipb.link/report-card-2-ristek, untuk SC: https://ipb.link/report-card-2-sc).
+     * DILARANG mencampurkan tautan divisi lain.
+   - Akun Instagram resmi yang terverifikasi di BEM SSMI:
+     * BPH: @bemssmi_bph (https://instagram.com/bemssmi_bph)
+     * Medbrand: @medbrandnyasesemi (https://instagram.com/medbrandnyasesemi)
+     * Ristek: @rizzteknologia (https://instagram.com/rizzteknologia)
+     * Steering Committee (SC) & divisi lainnya belum/tidak memiliki akun Instagram terpisah (arahkan ke website https://bemssmi.com).
+
 7. BANTUAN AKADEMIK & MATEMATIKA / SAINS:
    Bantu mahasiswa memahami soal matematika, kalkulus, statistika, aljabar, dan sains dasar. WAJIB menggunakan format LaTeX standar: $...$ untuk rumus sebaris (inline) dan $$...$$ untuk persamaan terpisah (display).
 
@@ -259,10 +275,8 @@ BATASAN KETAT & PERTAHANAN KEAMANAN:
 
 Gunakan bahasa Indonesia yang baik, lugas, santun, terstruktur rapi dengan markdown, dan suportif kepada seluruh mahasiswa.`;
 
-// Pola Deteksi Figur Politik, Slang, Julukan & Istilah Politik Praktis
 const POLITICAL_TERMS_REGEX = /\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud(\s*md)?|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut(\s*binsar)?|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/gi;
 
-// Pola Deteksi Upaya Jailbreak & Kode Berbahaya
 const JAILBREAK_REGEX = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
 
 const NEUTRALITY_RESPONSE_TEXT = `### 🏛️ Netralitas Organisasi Mahasiswa
@@ -279,12 +293,10 @@ Maaf, Langkari AI hanya menyediakan bantuan dan contoh kode pemrograman sederhan
 
 Kami tidak memfasilitasi pembuatan script eksploitasi, peretasan, bypass otentikasi, malware, maupun kode berbahaya lainnya. Silakan ajukan pertanyaan seputar logika algoritma pengantar atau matematika/sains kampus!`;
 
-// Deteksi Mandiri Guardrail Sebelum Masuk API
 function checkContentGuardrail(text) {
   if (!text) return null;
   const lower = text.toLowerCase();
 
-  // 1. Kata kunci konten seksual / dewasa
   const sexualPatterns = [
     /\b(seks|sex|bokep|porno|porn|ngentot|colmek|masturbasi|kontol|memek|bugil|lendir|erotis|desah|vagina|penis|payudara|tetek|toket|nude|nsfw|fetish|hentai)\b/i,
     /(open\s*bo|bispak|bisyar|film\s*dewasa|video\s*dewasa|hubungan\s*intim|gambar\s*telanjang)/i
@@ -295,12 +307,10 @@ function checkContentGuardrail(text) {
     }
   }
 
-  // 2. Anti-Jailbreak & Malicious Coding
   if (JAILBREAK_REGEX.test(text)) {
     return CYBER_SECURITY_RESPONSE_TEXT;
   }
 
-  // 3. Kata kunci politik praktis partisan & slang figur (misal wowo, owi, samsul, dsb)
   POLITICAL_TERMS_REGEX.lastIndex = 0;
   if (POLITICAL_TERMS_REGEX.test(text)) {
     return NEUTRALITY_RESPONSE_TEXT;
@@ -309,7 +319,6 @@ function checkContentGuardrail(text) {
   return null;
 }
 
-// Sanitasi Output AI: Jika output memuat kata seperti 'prabowo', 'wowo', dll, langsung ganti/sensor
 function sanitizeAiOutput(rawText) {
   if (!rawText) return rawText;
 
@@ -321,7 +330,6 @@ function sanitizeAiOutput(rawText) {
   return rawText;
 }
 
-// Sensor langsung kata politik per token jika diperlukan
 function replacePoliticalKeywords(text) {
   if (!text) return text;
   POLITICAL_TERMS_REGEX.lastIndex = 0;
@@ -331,43 +339,46 @@ function replacePoliticalKeywords(text) {
 const escapeHtml = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Generator Tombol Aksi Interaktif Divisi untuk Chat
-function generateDivisionActionHtml(divKey) {
+function generateDivisionActionHtml(divKey, intent = 'all') {
   const d = DIVISION_INFO[divKey];
   if (!d) return '';
 
-  const reportCardBtn = `
+  const reportCardBtn = d.reportCard ? `
     <a href="${d.reportCard}" target="_blank" rel="noopener noreferrer" class="chat-action-btn chat-report-btn">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
       <span>Buka Report Card ${d.short}</span>
     </a>
-  `;
+  ` : '';
 
   let secondaryBtn = '';
-  if (d.picWa) {
-    secondaryBtn = `
-      <a href="https://wa.me/${d.picWa}?text=Halo%20PIC%20Divisi%20${encodeURIComponent(d.short)}%20BEM%20SSMI." target="_blank" rel="noopener noreferrer" class="chat-action-btn chat-wa-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.311.045-.698.059-1.146-.062-.295-.08-.675-.213-1.16-.423-2.029-.877-3.344-2.92-3.447-3.056-.103-.137-.818-1.092-.818-2.083 0-.991.517-1.478.7-1.681.183-.203.4-.254.534-.254.133 0 .267.002.383.007.123.006.287-.047.449.342.167.404.57 1.391.619 1.492.049.102.083.222.016.356-.067.135-.1.218-.199.333-.099.116-.209.258-.299.347-.099.098-.202.205-.087.402.115.197.511.843 1.096 1.364.754.671 1.389.878 1.587.976.197.098.312.083.428-.05.116-.134.498-.58.631-.779.133-.199.266-.165.45-.098.183.067 1.165.55 1.365.65.2.1.333.15.382.233.049.084.049.49-.095.895z"/></svg>
-        <span>Chat WA (${d.picName || 'PIC ' + d.short})</span>
-      </a>
-    `;
-  } else if (d.instagramUrl) {
+  if (d.instagramUrl) {
     secondaryBtn = `
       <a href="${d.instagramUrl}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#E1306C; color:#FFFFFF;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
         <span>Instagram ${d.instagram}</span>
       </a>
     `;
-  } else {
+  } else if (d.webUrl) {
     secondaryBtn = `
-      <a href="${d.webUrl || 'https://bemssmi.com'}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#2563EB; color:#FFFFFF;">
+      <a href="${d.webUrl}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#2563EB; color:#FFFFFF;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
         <span>Portal ${d.short} (bemssmi.com)</span>
       </a>
     `;
   }
 
-  const roleText = d.type === 'bph' ? 'Badan Pengurus Harian' : (d.type === 'biro' ? 'Biro Resmi BEM SSMI' : 'Departemen Resmi BEM SSMI');
+  let btns = '';
+  if (intent === 'instagram') {
+    btns = secondaryBtn || '';
+  } else if (intent === 'report_card') {
+    btns = reportCardBtn || '';
+  } else {
+    btns = `${reportCardBtn}${secondaryBtn}`;
+  }
+
+  if (!btns) return '';
+
+  const roleText = d.type === 'bph' ? 'Badan Pengurus Harian' : (d.type === 'biro' ? 'Biro Resmi BEM SSMI' : (d.type === 'sc' ? 'Steering Committee' : 'Departemen Resmi BEM SSMI'));
 
   return `
 <div class="chat-division-actions">
@@ -376,22 +387,33 @@ function generateDivisionActionHtml(divKey) {
     <div class="chat-action-lead">Unit: <strong>${d.name}</strong> <span class="chat-pic-role">(${roleText})</span></div>
   </div>
   <div class="chat-btn-group">
-    ${reportCardBtn}
-    ${secondaryBtn}
+    ${btns}
   </div>
 </div>`;
 }
 
-// Cek apakah prompt atau reply menyinggung divisi tertentu
-function detectAndAttachDivisionButtons(html, raw) {
-  const lower = (raw || '').toLowerCase();
+function detectAndAttachDivisionButtons(html, raw, userPrompt = '') {
+  const promptLower = (userPrompt || '').toLowerCase();
+  const rawLower = (raw || '').toLowerCase();
+
+  const isAskingIg = /\b(instagram|ig|sosmed|medsos|akun ig)\b/.test(promptLower);
+  const isAskingReport = /\b(report\s*card|rapor|laporan|kpi|evaluasi)\b/.test(promptLower);
+
+  let intent = 'all';
+  if (isAskingIg && !isAskingReport) {
+    intent = 'instagram';
+  } else if (isAskingReport && !isAskingIg) {
+    intent = 'report_card';
+  }
+
   const added = new Set();
   let buttonsHtml = '';
 
   const divisionKeywords = {
+    sc: ['steering committee', 'report-card-2-sc', 'steering', 'sc'],
     bph: ['bph', 'badan pengurus harian', 'sekretaris jenderal', 'bendahara kabinet'],
     psdmk: ['psdmk', 'pengembangan sumber daya mahasiswa dan karir', 'karir mahasiswa', 'pelatihan karir'],
-    medbrand: ['medbrand', 'media branding', 'media kreatif', 'desain komunikasi', 'desain visual', 'feed instagram'],
+    medbrand: ['medbrand', 'media branding', 'media kreatif', 'desain komunikasi', 'desain visual'],
     eksmit: ['eksmit', 'eksternal bisnis', 'kemitraan', 'sponsorship', 'bisnis mahasiswa'],
     kastrat: ['kastrat', 'kajian strategis', 'aksi strategis', 'isu kebijakan', 'dialektika'],
     ristek: ['ristek', 'riset dan teknologi', 'mspace', 'inovasi digital', 'sistem informasi'],
@@ -403,12 +425,28 @@ function detectAndAttachDivisionButtons(html, raw) {
     imbang: ['imbang', 'internal dan pengembangan', 'first step of langkari', 'fungsionaris']
   };
 
-  for (const [key, patterns] of Object.entries(divisionKeywords)) {
-    for (const pat of patterns) {
-      if (lower.includes(pat) && !added.has(key)) {
-        added.add(key);
-        buttonsHtml += generateDivisionActionHtml(key);
-        break;
+  if (promptLower.trim().length > 0) {
+    for (const [key, patterns] of Object.entries(divisionKeywords)) {
+      for (const pat of patterns) {
+        var isMatch = (pat === 'sc') ? /\bsc\b/i.test(promptLower) : promptLower.includes(pat);
+        if (isMatch && !added.has(key)) {
+          added.add(key);
+          buttonsHtml += generateDivisionActionHtml(key, intent);
+          break;
+        }
+      }
+    }
+  }
+
+  if (added.size === 0) {
+    for (const [key, patterns] of Object.entries(divisionKeywords)) {
+      for (const pat of patterns) {
+        var isMatchRaw = (pat === 'sc') ? /\bsc\b/i.test(rawLower) : rawLower.includes(pat);
+        if (isMatchRaw && !added.has(key)) {
+          added.add(key);
+          buttonsHtml += generateDivisionActionHtml(key, intent);
+          break;
+        }
       }
     }
   }
@@ -416,11 +454,9 @@ function detectAndAttachDivisionButtons(html, raw) {
   return buttonsHtml ? `${html}${buttonsHtml}` : html;
 }
 
-// Format Markdown Lengkap: LaTeX Math, Code Blocks, Typography & Division Buttons
-const formatReply = (raw) => {
+const formatReply = (raw, userPrompt = '') => {
   if (!raw) return '';
 
-  // 1. Amankan Code Blocks
   const codeBlocks = [];
   let processed = raw.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
     const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
@@ -428,7 +464,6 @@ const formatReply = (raw) => {
     return placeholder;
   });
 
-  // 2. Amankan Display Math ($$...$$ dan \[...\])
   const displayMathBlocks = [];
   processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => {
     const placeholder = `__DISPLAY_MATH_${displayMathBlocks.length}__`;
@@ -441,7 +476,6 @@ const formatReply = (raw) => {
     return placeholder;
   });
 
-  // 3. Amankan Inline Math ($...$ dan \(...\))
   const inlineMathBlocks = [];
   processed = processed.replace(/\$([^\$\n]+?)\$/g, (match, math) => {
     const placeholder = `__INLINE_MATH_${inlineMathBlocks.length}__`;
@@ -454,10 +488,8 @@ const formatReply = (raw) => {
     return placeholder;
   });
 
-  // 4. Escape HTML untuk teks biasa
   let html = escapeHtml(processed);
 
-  // 5. Format Typography Markdown
   html = html
     .replace(/^#### (.*?)$/gm, '<h5 style="margin:4px 0 6px 0; color:#31487A; font-weight:700;">$1</h5>')
     .replace(/^### (.*?)$/gm, '<h4 style="margin:6px 0 8px 0; color:#31487A; font-weight:700;">$1</h4>')
@@ -470,7 +502,6 @@ const formatReply = (raw) => {
     .replace(/\n[-•] /g, '<br>• ')
     .replace(/\n/g, '<br>');
 
-  // 6. Kembalikan Math Blocks (Pre-render KaTeX Server-Side untuk Tampilan Instan & Presisi)
   inlineMathBlocks.forEach((math, i) => {
     if (serverKatex) {
       try {
@@ -493,7 +524,6 @@ const formatReply = (raw) => {
     html = html.replace(`__DISPLAY_MATH_${i}__`, () => `$$${math}$$`);
   });
 
-  // 7. Kembalikan Code Blocks dengan tampilan elegan dan tombol Salin
   codeBlocks.forEach((item, i) => {
     const langDisplay = (item.lang || 'CODE').toUpperCase();
     const safeCode = escapeHtml(item.code);
@@ -501,11 +531,9 @@ const formatReply = (raw) => {
     html = html.replace(`__CODE_BLOCK_${i}__`, () => codeCard);
   });
 
-  // 8. Tambahkan tombol interaktif divisi jika ada
-  return detectAndAttachDivisionButtons(html, raw);
+  return detectAndAttachDivisionButtons(html, raw, userPrompt);
 };
 
-// Panggil API Kenari.id (OpenAI Compatible Format)
 async function callKenariChat(model, prompt, image, apiKey) {
   const url = `${KENARI_BASE_URL}/chat/completions`;
 
@@ -559,7 +587,6 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer(async (req, res) => {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -572,9 +599,6 @@ const server = http.createServer(async (req, res) => {
 
   let reqPath = req.url.split('?')[0];
 
-  // ============================================================================
-  // ENDPOINT: GET /api/models & /api/models.php (Daftar 3 Model Gratis Kenari.id)
-  // ============================================================================
   if ((reqPath === '/api/models' || reqPath === '/api/models.php') && req.method === 'GET') {
     const apiKey = process.env.KENARI_API_KEY || '';
     const hasKey = Boolean(apiKey && !apiKey.includes('your-kenari-api-key'));
@@ -587,9 +611,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ============================================================================
-  // ENDPOINT: POST /api/chat & /api/chat.php (Integrasi AI Kenari.id)
-  // ============================================================================
   if ((reqPath === '/api/chat' || reqPath === '/api/chat.php') && req.method === 'POST') {
     let bodyData = '';
     req.on('data', chunk => {
@@ -612,12 +633,11 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 1. Guardrail Moderasi (Seks & Politik)
         const violation = checkContentGuardrail(prompt);
         if (violation) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
-            reply: formatReply(violation),
+            reply: formatReply(violation, prompt),
             rawReply: violation,
             model: 'moderation-guard',
             moderated: true
@@ -625,7 +645,6 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 2. Validasi API Key Kenari
         const apiKey = process.env.KENARI_API_KEY;
         if (!apiKey || apiKey.includes('your-kenari-api-key')) {
           const errMsg = 'API Key Kenari.id belum disetel di file <code>.env</code>.<br><br>Silakan buka file <code>.env</code> di direktori root aplikasi dan masukkan kunci API Anda:<br><code>KENARI_API_KEY=kn-xxxxxxxx</code><br><br>Setelah itu Langkari AI dapat merespons secara real-time!';
@@ -639,7 +658,6 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 3. Fallback Model Gratis (Coba model terpilih, jika limit pindah ke model gratis berikutnya)
         let candidateModels = FREE_MODELS.includes(requestedModel)
           ? [requestedModel, ...FREE_MODELS.filter(m => m !== requestedModel)]
           : FREE_MODELS;
@@ -676,13 +694,12 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (success) {
-          // Output Guardrail: Sensor & sanitasi jika AI merespons dengan kata figur seperti 'prabowo', 'wowo', dll.
           const cleanReply = sanitizeAiOutput(finalReply);
           const sanitizedReply = replacePoliticalKeywords(cleanReply);
 
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
-            reply: formatReply(sanitizedReply),
+            reply: formatReply(sanitizedReply, prompt),
             rawReply: sanitizedReply,
             model: usedModel
           }));
@@ -708,9 +725,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ============================================================================
-  // STATIC FILE HANDLER
-  // ============================================================================
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/index.html';
   }
