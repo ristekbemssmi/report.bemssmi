@@ -406,25 +406,27 @@ function formatReply($raw) {
 }
 
 // Pola Deteksi Figur Politik, Slang, Julukan & Istilah Politik Praktis
-$politicalRegex = '/\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud(\s*md)?|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut(\s*binsar)?|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i';
+$politicalRegex = '/\b(politik|partai(\s*politik)?|parpol|pemilu|pilpres|pilkada|caleg|paslon|coblos|timses|koalisi|oposisi|dinasti\s*politik|debat\s*capres|prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud(\s*md)?|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut(\s*binsar)?|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i';
 
-// Pola Deteksi Upaya Jailbreak & Kode Berbahaya
-$jailbreakRegex = '/(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i';
+// Pola Deteksi Upaya Jailbreak, Hacking, NASA & Kode Berbahaya
+$jailbreakRegex = '/(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|\b(hack|hacking|hacker|ngehack|heker|retas|meretas|peretasan)\b|nasa|\b(exploit|exploiting|eksploitasi|cyber\s*attack|defacing|deface|carding|pentest)\b|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan(\s*horse)?|malware|ddos(\s*attack)?|brute\s*force|bypass\s*(login|auth|password|admin)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i';
 
-$neutralityText = "### 🏛️ Netralitas Organisasi Mahasiswa\n\nLangkari AI berkomitmen menjunjung tinggi asas netralitas dan independensi BEM Langkah Berdikari.\n\nSebagai asisten resmi organisasi kampus, sistem kami tidak membahas figur politik praktis, kandidat pemilu, partai politik, maupun opini partisan.\n\nSilakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, administrasi kampus, atau 12 divisi resmi BEM Langkah Berdikari!";
+$neutralityText = "### AKSES DIBATASI\n\nPermintaan tidak dapat diproses. Akses dibatasi untuk menjaga netralitas informasi dari pembahasan politik praktis atau opini partisan.\n\nSilakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, administrasi kampus, atau informasi program di Langkah Berdikari.";
 
-$cyberSecurityResponseText = "### ⚠️ Keamanan Sistem & Etika Pemrograman\n\nMaaf, Langkari AI hanya menyediakan bantuan dan contoh kode pemrograman sederhana yang aman untuk keperluan tugas akademik mahasiswa.\n\nKami tidak memfasilitasi pembuatan script eksploitasi, peretasan, bypass otentikasi, malware, maupun kode berbahaya lainnya. Silakan ajukan pertanyaan seputar logika algoritma pengantar atau matematika/sains kampus!";
+$cyberSecurityResponseText = "### AKSES DIBATASI\n\nPermintaan tidak dapat diproses. Akses dibatasi untuk aktivitas yang berkaitan dengan peretasan, instruksi eksploitasi keamanan, malware, atau script berbahaya.\n\nSilakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, matematika, atau materi perkuliahan lainnya.";
+
+$sexualContentText = "### AKSES DIBATASI\n\nPermintaan tidak dapat diproses. Akses dibatasi untuk materi dewasa, konten seksual, atau konten eksplisit.\n\nSilakan ajukan pertanyaan seputar kegiatan kemahasiswaan, topik akademik, perkuliahan, atau layanan kampus.";
 
 // 4. Content Guardrail (Seksual, Anti-Jailbreak & Politik Praktis)
 function checkGuardrail($text) {
-    global $politicalRegex, $jailbreakRegex, $neutralityText, $cyberSecurityResponseText;
+    global $politicalRegex, $jailbreakRegex, $neutralityText, $cyberSecurityResponseText, $sexualContentText;
     if (!$text) return null;
     $lower = mb_strtolower($text, 'UTF-8');
 
     // Seksual
     $sexualRegex = '/\b(seks|sex|bokep|porno|porn|ngentot|colmek|masturbasi|kontol|memek|bugil|lendir|erotis|desah|vagina|penis|payudara|tetek|toket|nude|nsfw|fetish|hentai)\b|open\s*bo|bispak|bisyar|film\s*dewasa|video\s*dewasa|hubungan\s*intim/i';
     if (preg_match($sexualRegex, $lower)) {
-        return 'Maaf, sebagai asisten resmi BEM Langkah Berdikari (Langkari AI), saya tidak dapat merespons hal-hal yang berkaitan dengan konten seksual atau materi dewasa. Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau 12 divisi resmi BEM.';
+        return $sexualContentText;
     }
 
     // Anti-Jailbreak & Malicious Coding
@@ -451,9 +453,7 @@ function sanitizeAiOutput($raw) {
 }
 
 function replacePoliticalKeywords($raw) {
-    global $politicalRegex;
-    if (!$raw) return $raw;
-    return preg_replace($politicalRegex, '🏛️ Netralitas Organisasi Mahasiswa', $raw);
+    return $raw;
 }
 
 $violation = checkGuardrail($prompt);
