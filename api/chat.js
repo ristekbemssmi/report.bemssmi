@@ -1,12 +1,9 @@
-// api/chat.js - Serverless Kenari.id Gateway Proxy for Vercel
-// BEM Langkah Berdikari - Langkari AI Assistant
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const KENARI_BASE_URL = (process.env.KENARI_BASE_URL || 'https://kenari.id/v1').replace(/\/+$/, '');
 
-// Inisialisasi KaTeX Server-Side Renderer jika tersedia
 let serverKatex = null;
 try {
   const kPath = path.join(__dirname, '..', 'vendor', 'katex', 'katex.min.js');
@@ -23,15 +20,12 @@ try {
   }
 } catch (e) {}
 
-// 3 Model AI Gratis Resmi Kenari.id
 const FREE_MODELS = [
   'glm-4-7-flash:free',
   'qwen3-8-omni-flash:free',
   'laguna-xs-2-1:free'
 ];
 
-// Data Resmi 12 Biro, Departemen & BPH BEM SSMI IPB University (Kabinet Langkah Berdikari)
-// Sumber data resmi terintegrasi: https://bemssmi.com
 const DIVISION_INFO = {
   bph: {
     name: 'Badan Pengurus Harian (BPH)',
@@ -171,6 +165,17 @@ const DIVISION_INFO = {
     picName: '',
     picRole: 'Dept. Sosial dan Lingkungan',
     picWa: ''
+  },
+  sc: {
+    name: 'Steering Committee (SC)',
+    short: 'SC',
+    type: 'sc',
+    reportCard: 'https://ipb.link/report-card-2-sc',
+    webUrl: 'https://bemssmi.com',
+    desc: 'Steering Committee berperan sebagai badan pengarah dan penasihat strategis organisasi bagi BEM SSMI IPB University Kabinet Langkah Berdikari.',
+    picName: '',
+    picRole: 'Steering Committee',
+    picWa: ''
   }
 };
 
@@ -288,43 +293,46 @@ function replacePoliticalKeywords(text) {
 const escapeHtml = s =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Generator Tombol Aksi Interaktif Divisi untuk Chat
-function generateDivisionActionHtml(divKey) {
+function generateDivisionActionHtml(divKey, intent = 'all') {
   const d = DIVISION_INFO[divKey];
   if (!d) return '';
 
-  const reportCardBtn = `
+  const reportCardBtn = d.reportCard ? `
     <a href="${d.reportCard}" target="_blank" rel="noopener noreferrer" class="chat-action-btn chat-report-btn">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
       <span>Buka Report Card ${d.short}</span>
     </a>
-  `;
+  ` : '';
 
   let secondaryBtn = '';
-  if (d.picWa) {
-    secondaryBtn = `
-      <a href="https://wa.me/${d.picWa}?text=Halo%20PIC%20Divisi%20${encodeURIComponent(d.short)}%20BEM%20SSMI." target="_blank" rel="noopener noreferrer" class="chat-action-btn chat-wa-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.311.045-.698.059-1.146-.062-.295-.08-.675-.213-1.16-.423-2.029-.877-3.344-2.92-3.447-3.056-.103-.137-.818-1.092-.818-2.083 0-.991.517-1.478.7-1.681.183-.203.4-.254.534-.254.133 0 .267.002.383.007.123.006.287-.047.449.342.167.404.57 1.391.619 1.492.049.102.083.222.016.356-.067.135-.1.218-.199.333-.099.116-.209.258-.299.347-.099.098-.202.205-.087.402.115.197.511.843 1.096 1.364.754.671 1.389.878 1.587.976.197.098.312.083.428-.05.116-.134.498-.58.631-.779.133-.199.266-.165.45-.098.183.067 1.165.55 1.365.65.2.1.333.15.382.233.049.084.049.49-.095.895z"/></svg>
-        <span>Chat WA (${d.picName || 'PIC ' + d.short})</span>
-      </a>
-    `;
-  } else if (d.instagramUrl) {
+  if (d.instagramUrl) {
     secondaryBtn = `
       <a href="${d.instagramUrl}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#E1306C; color:#FFFFFF;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
         <span>Instagram ${d.instagram}</span>
       </a>
     `;
-  } else {
+  } else if (d.webUrl) {
     secondaryBtn = `
-      <a href="${d.webUrl || 'https://bemssmi.com'}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#2563EB; color:#FFFFFF;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+      <a href="${d.webUrl}" target="_blank" rel="noopener noreferrer" class="chat-action-btn" style="background:#2563EB; color:#FFFFFF;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
         <span>Portal ${d.short} (bemssmi.com)</span>
       </a>
     `;
   }
 
-  const roleText = d.type === 'bph' ? 'Badan Pengurus Harian' : (d.type === 'biro' ? 'Biro Resmi BEM SSMI' : 'Departemen Resmi BEM SSMI');
+  let btns = '';
+  if (intent === 'instagram') {
+    btns = secondaryBtn || '';
+  } else if (intent === 'report_card') {
+    btns = reportCardBtn || '';
+  } else {
+    btns = `${reportCardBtn}${secondaryBtn}`;
+  }
+
+  if (!btns) return '';
+
+  const roleText = d.type === 'bph' ? 'Badan Pengurus Harian' : (d.type === 'biro' ? 'Biro Resmi BEM SSMI' : (d.type === 'sc' ? 'Steering Committee' : 'Departemen Resmi BEM SSMI'));
 
   return `
 <div class="chat-division-actions">
@@ -333,21 +341,33 @@ function generateDivisionActionHtml(divKey) {
     <div class="chat-action-lead">Unit: <strong>${d.name}</strong> <span class="chat-pic-role">(${roleText})</span></div>
   </div>
   <div class="chat-btn-group">
-    ${reportCardBtn}
-    ${secondaryBtn}
+    ${btns}
   </div>
 </div>`;
 }
 
-function detectAndAttachDivisionButtons(html, raw) {
-  const lower = (raw || '').toLowerCase();
+function detectAndAttachDivisionButtons(html, raw, userPrompt = '') {
+  const promptLower = (userPrompt || '').toLowerCase();
+  const rawLower = (raw || '').toLowerCase();
+
+  const isAskingIg = /\b(instagram|ig|sosmed|medsos|akun ig)\b/.test(promptLower);
+  const isAskingReport = /\b(report\s*card|rapor|laporan|kpi|evaluasi)\b/.test(promptLower);
+
+  let intent = 'all';
+  if (isAskingIg && !isAskingReport) {
+    intent = 'instagram';
+  } else if (isAskingReport && !isAskingIg) {
+    intent = 'report_card';
+  }
+
   const added = new Set();
   let buttonsHtml = '';
 
   const divisionKeywords = {
+    sc: ['steering committee', 'report-card-2-sc', 'steering', 'sc'],
     bph: ['bph', 'badan pengurus harian', 'sekretaris jenderal', 'bendahara kabinet'],
     psdmk: ['psdmk', 'pengembangan sumber daya mahasiswa dan karir', 'karir mahasiswa', 'pelatihan karir'],
-    medbrand: ['medbrand', 'media branding', 'media kreatif', 'desain komunikasi', 'desain visual', 'feed instagram'],
+    medbrand: ['medbrand', 'media branding', 'media kreatif', 'desain komunikasi', 'desain visual'],
     eksmit: ['eksmit', 'eksternal bisnis', 'kemitraan', 'sponsorship', 'bisnis mahasiswa'],
     kastrat: ['kastrat', 'kajian strategis', 'aksi strategis', 'isu kebijakan', 'dialektika'],
     ristek: ['ristek', 'riset dan teknologi', 'mspace', 'inovasi digital', 'sistem informasi'],
@@ -359,12 +379,28 @@ function detectAndAttachDivisionButtons(html, raw) {
     imbang: ['imbang', 'internal dan pengembangan', 'first step of langkari', 'fungsionaris']
   };
 
-  for (const [key, patterns] of Object.entries(divisionKeywords)) {
-    for (const pat of patterns) {
-      if (lower.includes(pat) && !added.has(key)) {
-        added.add(key);
-        buttonsHtml += generateDivisionActionHtml(key);
-        break;
+  if (promptLower.trim().length > 0) {
+    for (const [key, patterns] of Object.entries(divisionKeywords)) {
+      for (const pat of patterns) {
+        var isMatch = (pat === 'sc') ? /\bsc\b/i.test(promptLower) : promptLower.includes(pat);
+        if (isMatch && !added.has(key)) {
+          added.add(key);
+          buttonsHtml += generateDivisionActionHtml(key, intent);
+          break;
+        }
+      }
+    }
+  }
+
+  if (added.size === 0) {
+    for (const [key, patterns] of Object.entries(divisionKeywords)) {
+      for (const pat of patterns) {
+        var isMatchRaw = (pat === 'sc') ? /\bsc\b/i.test(rawLower) : rawLower.includes(pat);
+        if (isMatchRaw && !added.has(key)) {
+          added.add(key);
+          buttonsHtml += generateDivisionActionHtml(key, intent);
+          break;
+        }
       }
     }
   }
@@ -372,7 +408,7 @@ function detectAndAttachDivisionButtons(html, raw) {
   return buttonsHtml ? `${html}${buttonsHtml}` : html;
 }
 
-const formatReply = raw => {
+const formatReply = (raw, userPrompt = '') => {
   if (!raw) return '';
 
   const codeBlocks = [];
@@ -420,7 +456,6 @@ const formatReply = raw => {
     .replace(/\n[-•] /g, '<br>• ')
     .replace(/\n/g, '<br>');
 
-  // 6. Kembalikan Math Blocks (Pre-render KaTeX Server-Side jika tersedia)
   inlineMathBlocks.forEach((math, i) => {
     if (serverKatex) {
       try {
@@ -450,7 +485,7 @@ const formatReply = raw => {
     html = html.replace(`__CODE_BLOCK_${i}__`, () => codeCard);
   });
 
-  return detectAndAttachDivisionButtons(html, raw);
+  return detectAndAttachDivisionButtons(html, raw, userPrompt);
 };
 
 async function callKenariChat(model, prompt, image, apiKey) {
@@ -505,8 +540,12 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const apiKey = process.env.KENARI_API_KEY;
-  if (!apiKey || apiKey.includes('your-kenari-api-key')) {
+  const DEFAULT_KENARI_KEY = 'kn-96db98261eaf3a42df0ccdf83ccf1f26d11059e6b717850d';
+  const apiKey = (process.env.KENARI_API_KEY && !process.env.KENARI_API_KEY.includes('your-kenari-api-key'))
+    ? process.env.KENARI_API_KEY
+    : DEFAULT_KENARI_KEY;
+
+  if (!apiKey) {
     return res.status(200).json({
       reply: 'KENARI_API_KEY belum disetel di environment variables. Silakan tambahkan KENARI_API_KEY di dashboard hosting Anda.',
       rawReply: 'KENARI_API_KEY belum disetel.',
@@ -519,11 +558,10 @@ export default async function handler(req, res) {
     const { prompt, image, model } = req.body || {};
     if (!prompt && !image) return res.status(400).json({ error: 'Prompt or image is required' });
 
-    // Guardrail Check
     const violation = checkContentGuardrail(prompt);
     if (violation) {
       return res.status(200).json({
-        reply: formatReply(violation),
+        reply: formatReply(violation, prompt),
         rawReply: violation,
         model: 'moderation-guard',
         moderated: true
@@ -566,7 +604,7 @@ export default async function handler(req, res) {
       const sanitizedReply = replacePoliticalKeywords(cleanReply);
 
       return res.status(200).json({
-        reply: formatReply(sanitizedReply),
+        reply: formatReply(sanitizedReply, prompt),
         rawReply: sanitizedReply,
         model: usedModel
       });

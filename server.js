@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const DEFAULT_KENARI_KEY = 'kn-96db98261eaf3a42df0ccdf83ccf1f26d11059e6b717850d';
+
 function loadEnv() {
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -27,6 +29,19 @@ function loadEnv() {
     } catch (e) {
       console.warn('Gagal membaca .env:', e.message);
     }
+  }
+
+  if (!process.env.KENARI_API_KEY || process.env.KENARI_API_KEY.includes('your-kenari-api-key')) {
+    process.env.KENARI_API_KEY = DEFAULT_KENARI_KEY;
+  }
+  if (!process.env.KENARI_BASE_URL) {
+    process.env.KENARI_BASE_URL = 'https://kenari.id/v1';
+  }
+  if (!process.env.DEFAULT_AI_MODEL) {
+    process.env.DEFAULT_AI_MODEL = 'glm-4-7-flash:free';
+  }
+  if (!process.env.ALLOWED_FREE_MODELS) {
+    process.env.ALLOWED_FREE_MODELS = 'glm-4-7-flash:free,qwen3-8-omni-flash:free,laguna-xs-2-1:free';
   }
 }
 loadEnv();
@@ -600,8 +615,10 @@ const server = http.createServer(async (req, res) => {
   let reqPath = req.url.split('?')[0];
 
   if ((reqPath === '/api/models' || reqPath === '/api/models.php') && req.method === 'GET') {
-    const apiKey = process.env.KENARI_API_KEY || '';
-    const hasKey = Boolean(apiKey && !apiKey.includes('your-kenari-api-key'));
+    const apiKey = (process.env.KENARI_API_KEY && !process.env.KENARI_API_KEY.includes('your-kenari-api-key'))
+      ? process.env.KENARI_API_KEY
+      : DEFAULT_KENARI_KEY;
+    const hasKey = Boolean(apiKey);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       models: FREE_MODELS,
@@ -645,9 +662,11 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const apiKey = process.env.KENARI_API_KEY;
-        if (!apiKey || apiKey.includes('your-kenari-api-key')) {
-          const errMsg = 'API Key Kenari.id belum disetel di file <code>.env</code>.<br><br>Silakan buka file <code>.env</code> di direktori root aplikasi dan masukkan kunci API Anda:<br><code>KENARI_API_KEY=kn-xxxxxxxx</code><br><br>Setelah itu Langkari AI dapat merespons secara real-time!';
+        const apiKey = (process.env.KENARI_API_KEY && !process.env.KENARI_API_KEY.includes('your-kenari-api-key'))
+          ? process.env.KENARI_API_KEY
+          : DEFAULT_KENARI_KEY;
+        if (!apiKey) {
+          const errMsg = 'API Key Kenari.id belum disetel di server.<br><br>Silakan masukkan kunci API Anda di file <code>.env</code> atau Hostinger Environment Variables:<br><code>KENARI_API_KEY=kn-xxxxxxxx</code>';
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
             reply: errMsg,

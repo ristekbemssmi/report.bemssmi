@@ -14797,29 +14797,31 @@ body.desktop-single-page-locked #desktopPageAI,
   background: linear-gradient(
     90deg,
     #1E2E4F 0%,
-    #2563EB 25%,
-    #EC8129 50%,
-    #2563EB 75%,
+    #1E2E4F 30%,
+    #2563EB 42%,
+    #EC8129 54%,
+    #2563EB 66%,
+    #1E2E4F 80%,
     #1E2E4F 100%
   ) !important;
-  background-size: 200% auto !important;
+  background-size: 300% 100% !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
-  animation: shiningTextMove 2.2s linear infinite !important;
+  animation: shiningTextMove 2s linear infinite !important;
   user-select: none !important;
+  will-change: background-position !important;
 }
 
 @keyframes shiningTextMove {
   0% {
-    background-position: 0% 50%;
+    background-position: 100% 0;
   }
   100% {
-    background-position: 200% 50%;
+    background-position: -100% 0;
   }
 }
-
 /* Minimalist Thinking State: No boxy pill, no clutter */
 .gemini-msg.gemini-searching,
 .gemini-msg.searching {

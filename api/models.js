@@ -11,8 +11,10 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  const apiKey = (process.env.KENARI_API_KEY || '').trim();
-  const configured = Boolean(apiKey && !apiKey.includes('your-kenari-api-key'));
+  const DEFAULT_KENARI_KEY = 'kn-96db98261eaf3a42df0ccdf83ccf1f26d11059e6b717850d';
+  const rawKey = (process.env.KENARI_API_KEY || '').trim();
+  const apiKey = (rawKey && !rawKey.includes('your-kenari-api-key')) ? rawKey : DEFAULT_KENARI_KEY;
+  const configured = Boolean(apiKey);
 
   return res.status(200).json({
     models: [
