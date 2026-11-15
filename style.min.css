@@ -1,4 +1,4 @@
-﻿:root {
+:root {
 
   --c-dark-navy: #192338;
 
@@ -14797,14 +14797,13 @@ body.desktop-single-page-locked #desktopPageAI,
   background: linear-gradient(
     90deg,
     #1E2E4F 0%,
-    #1E2E4F 30%,
-    #2563EB 42%,
-    #EC8129 54%,
-    #2563EB 66%,
-    #1E2E4F 80%,
+    #2563EB 25%,
+    #F97316 50%,
+    #2563EB 75%,
     #1E2E4F 100%
   ) !important;
-  background-size: 300% 100% !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat-x !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
@@ -14816,10 +14815,10 @@ body.desktop-single-page-locked #desktopPageAI,
 
 @keyframes shiningTextMove {
   0% {
-    background-position: 100% 0;
+    background-position: 200% 0;
   }
   100% {
-    background-position: -100% 0;
+    background-position: 0% 0;
   }
 }
 /* Minimalist Thinking State: No boxy pill, no clutter */

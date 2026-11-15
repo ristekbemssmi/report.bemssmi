@@ -2328,18 +2328,18 @@ function generateAiResponse(query, hasImage) {
   const sexualKeywords = ['seks', 'sex', 'bokep', 'porno', 'porn', 'ngentot', 'colmek', 'masturbasi', 'kontol', 'memek', 'bugil', 'lendir', 'erotis', 'desah', 'vagina', 'penis', 'payudara', 'tetek', 'toket', 'nude', 'nsfw', 'open bo'];
   for (const kw of sexualKeywords) {
     if (qLower.includes(kw)) {
-      return 'Maaf, sebagai asisten resmi BEM Langkah Berdikari (Langkari AI), saya tidak dapat merespons hal-hal yang berkaitan dengan konten seksual atau materi dewasa. Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau 12 divisi resmi BEM.';
+      return '<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem membatasi interaksi yang berkaitan dengan konten eksplisit, seksual, atau materi dewasa.<br><br>Silakan ajukan pertanyaan lain seputar topik akademik, perkuliahan, atau layanan kampus.</p>';
     }
   }
 
   const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
   if (jailbreakRegex.test(query)) {
-    return '<h4>⚠️ Keamanan Sistem & Etika Pemrograman</h4><p>Maaf, Langkari AI hanya menyediakan bantuan dan contoh kode pemrograman sederhana yang aman untuk keperluan tugas akademik mahasiswa.<br><br>Kami tidak memfasilitasi pembuatan script eksploitasi, peretasan, bypass otentikasi, malware, maupun kode berbahaya lainnya. Silakan ajukan pertanyaan seputar logika algoritma pengantar atau matematika/sains kampus!</p>';
+    return '<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem tidak menyediakan kode peretasan, instruksi eksploitasi keamanan, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>';
   }
 
   const politicsRegex = /\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
   if (politicsRegex.test(qLower)) {
-    return '<h4>🏛️ Netralitas Organisasi Mahasiswa</h4><p>Langkari AI berkomitmen menjunjung tinggi asas netralitas dan independensi BEM Langkah Berdikari. Sebagai asisten resmi organisasi kampus, kami tidak melayani pembahasan figur politik praktis, kandidat pemilu, atau opini partisan.</p>';
+    return '<h4>Akses Dibatasi</h4><p>Tidak dapat menampilkan jawaban untuk permintaan ini demi menjaga netralitas informasi. Sistem dibatasi untuk tidak membahas figur politik praktis, kandidat, partai politik, maupun opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>';
   }
 
   // Bantuan Soal Matematika & LaTeX
@@ -4007,18 +4007,18 @@ function getSmartGeminiResponseHTML(promptText, attachedImage) {
   const sexualKeywords = ['seks', 'sex', 'bokep', 'porno', 'porn', 'ngentot', 'colmek', 'masturbasi', 'kontol', 'memek', 'bugil', 'lendir', 'erotis', 'desah', 'vagina', 'penis', 'open bo'];
   for (const kw of sexualKeywords) {
     if (q.includes(kw)) {
-      return `<h4>⚠️ Peringatan Moderasi Konten</h4><p>Maaf, sebagai asisten resmi BEM Langkah Berdikari (Langkari AI), saya tidak dapat merespons hal-hal yang berkaitan dengan konten seksual atau materi dewasa. Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau 12 divisi resmi BEM.</p>`;
+      return `<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem membatasi interaksi yang berkaitan dengan konten eksplisit, seksual, atau materi dewasa.<br><br>Silakan ajukan pertanyaan lain seputar topik akademik, perkuliahan, atau layanan kampus.</p>`;
     }
   }
 
   const jailbreakRegex = /(ignore\s*(all)?\s*previous\s*instructions|abaikan\s*(semua)?\s*instruksi\s*(sebelumnya)?|jailbreak|dan\s*mode|developer\s*mode|unrestricted\s*mode|do\s*anything\s*now|sql\s*injection|sqli|reverse\s*shell|payload\s*shell|keylogger|ransomware|trojan\s*horse|rat\s*malware|ddos\s*attack|brute\s*force\s*script|bypass\s*(login|auth|password|admin)|hack\s*(wifi|akun|password|website)|buatkan\s*(script|kode|tool)\s*(hack|cheat|phishing|deface|exploit))/i;
   if (jailbreakRegex.test(promptText)) {
-    return `<h4>⚠️ Keamanan Sistem & Etika Pemrograman</h4><p>Maaf, Langkari AI hanya menyediakan bantuan dan contoh kode pemrograman sederhana yang aman untuk keperluan tugas akademik mahasiswa.<br><br>Kami tidak memfasilitasi pembuatan script eksploitasi, peretasan, bypass otentikasi, malware, maupun kode berbahaya lainnya. Silakan ajukan pertanyaan seputar logika algoritma pengantar atau matematika/sains kampus!</p>`;
+    return `<h4>Akses Dibatasi</h4><p>Permintaan tidak dapat diproses. Sistem tidak menyediakan kode peretasan, instruksi eksploitasi keamanan, atau script berbahaya.<br><br>Silakan ajukan pertanyaan seputar logika pemrograman dasar, algoritma edukatif, atau materi perkuliahan lainnya.</p>`;
   }
 
   const politicsRegex = /\b(prabowo|subianto|wowo|bowo|gemoy|jokowi|joko\s*widodo|wiwi|owi|mulyono|pakde\s*jokowi|gibran|rakabuming|fufufafa|samsul|belimbing\s*sayur|anies|baswedan|wan\s*abud|abah\s*anies|ganjar|pranowo|den\s*ganjar|mahfud|muhaimin|cak\s*imin|megawati|bu\s*mega|mak\s*banteng|kaesang|bahlil|luhut|ridwan\s*kamil|kang\s*emil|sby|yudhoyono|capres|cawapres|caleg|paslon|pilpres|pilkada|pemilu|coblos|debat\s*capres|timses|koalisi|oposisi|dinasti\s*politik|partai\s*politik|parpol|pdi-?p|gerindra|golkar|pks|nasdem|pkb|demokrat|pan|psi|perindo|ppp)\b/i;
   if (politicsRegex.test(q)) {
-    return `<h4>🏛️ Netralitas Organisasi Mahasiswa</h4><p>Langkari AI berkomitmen menjunjung tinggi asas netralitas dan independensi BEM Langkah Berdikari. Sebagai asisten resmi organisasi kampus, kami tidak melayani pembahasan figur politik praktis, kandidat pemilu, atau opini partisan.</p>`;
+    return `<h4>Akses Dibatasi</h4><p>Tidak dapat menampilkan jawaban untuk permintaan ini demi menjaga netralitas informasi. Sistem dibatasi untuk tidak membahas figur politik praktis, kandidat, partai politik, maupun opini partisan.<br><br>Silakan ajukan pertanyaan seputar kegiatan kemahasiswaan, akademik, atau informasi program di Langkah Berdikari.</p>`;
   }
 
   const dateStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
